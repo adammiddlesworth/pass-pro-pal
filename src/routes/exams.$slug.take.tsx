@@ -124,7 +124,7 @@ function QuizPage() {
         </div>
 
         <div className="space-y-6">
-          {questions.map((q, idx) => {
+          {questions.map((q) => {
             const selected = selectedAnswers[q.id];
             const correctAnswer = q.answers.find((a: any) => a.is_correct);
             const isCorrect = selected === correctAnswer?.id;
@@ -133,4 +133,98 @@ function QuizPage() {
               <Card key={q.id}>
                 <CardContent className="p-6">
                   <div className="mb-2 flex items-center gap-2">
-                    <Badge variant={isCorrect ? "default" : "destructive
+                    <Badge variant={isCorrect ? "default" : "destructive"}>
+                      {isCorrect ? "Correct" : "Incorrect"}
+                    </Badge>
+                  </div>
+                  <p className="mb-4 font-medium">{q.text}</p>
+                  <div className="space-y-2">
+                    {q.answers.map((a: any) => {
+                      const isSelected = selected === a.id;
+                      const isCorrectAnswer = a.is_correct;
+                      let borderClass = "border-muted";
+                      if (isCorrectAnswer) borderClass = "border-green-500 bg-green-50";
+                      else if (isSelected && !isCorrectAnswer)
+                        borderClass = "border-red-500 bg-red-50";
+
+                      return (
+                        <div
+                          key={a.id}
+                          className={`rounded-md border px-4 py-2 text-sm ${borderClass}`}
+                        >
+                          {a.text}
+                          {isCorrectAnswer && (
+                            <span className="ml-2 text-xs text-green-700">
+                              (Correct)
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  {q.explanation && (
+                    <p className="mt-4 rounded-md bg-muted p-3 text-sm text-muted-foreground">
+                      {q.explanation}
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto max-w-3xl px-4 py-12">
+      <div className="mb-6 flex items-center justify-between">
+        <span className="text-sm text-muted-foreground">
+          Question {currentIndex + 1} of {questions.length}
+        </span>
+        <span className="text-sm font-medium">{exam.title}</span>
+      </div>
+      <Progress value={progress} className="mb-8" />
+
+      <Card>
+        <CardContent className="p-6">
+          <p className="mb-6 text-lg font-medium">{currentQuestion.text}</p>
+          <div className="space-y-3">
+            {currentQuestion.answers.map((a: any) => {
+              const isSelected = selectedAnswers[currentQuestion.id] === a.id;
+              return (
+                <button
+                  key={a.id}
+                  onClick={() => selectAnswer(a.id)}
+                  className={`w-full rounded-md border px-4 py-3 text-left text-sm transition-colors ${
+                    isSelected
+                      ? "border-primary bg-primary/5"
+                      : "border-muted hover:bg-accent"
+                  }`}
+                >
+                  {a.text}
+                </button>
+              );
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+      <div className="mt-8 flex items-center justify-between">
+        <Button variant="outline" onClick={goPrev} disabled={currentIndex === 0}>
+          Previous
+        </Button>
+        {currentIndex === questions.length - 1 ? (
+          <Button
+            onClick={handleSubmit}
+            disabled={!selectedAnswers[currentQuestion.id] || saving}
+          >
+            {saving ? "Saving..." : "Submit Quiz"}
+          </Button>
+        ) : (
+          <Button onClick={goNext}>Next</Button>
+        )}
+      </div>
+    </div>
+  );
+}
