@@ -9,38 +9,113 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ExamsIndexRouteImport } from './routes/exams.index'
+import { Route as ExamsSlugRouteImport } from './routes/exams.$slug'
+import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
+import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExamsIndexRoute = ExamsIndexRouteImport.update({
+  id: '/exams/',
+  path: '/exams/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExamsSlugRoute = ExamsSlugRouteImport.update({
+  id: '/exams/$slug',
+  path: '/exams/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
+  id: '/checkout/success',
+  path: '/checkout/success',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExamsSlugTakeRoute = ExamsSlugTakeRouteImport.update({
+  id: '/take',
+  path: '/take',
+  getParentRoute: () => ExamsSlugRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
+  '/exams/$slug': typeof ExamsSlugRouteWithChildren
+  '/exams/': typeof ExamsIndexRoute
+  '/exams/$slug/take': typeof ExamsSlugTakeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
+  '/exams/$slug': typeof ExamsSlugRouteWithChildren
+  '/exams': typeof ExamsIndexRoute
+  '/exams/$slug/take': typeof ExamsSlugTakeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
+  '/exams/$slug': typeof ExamsSlugRouteWithChildren
+  '/exams/': typeof ExamsIndexRoute
+  '/exams/$slug/take': typeof ExamsSlugTakeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/checkout/success'
+    | '/exams/$slug'
+    | '/exams/'
+    | '/exams/$slug/take'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/checkout/success'
+    | '/exams/$slug'
+    | '/exams'
+    | '/exams/$slug/take'
+  id:
+    | '__root__'
+    | '/'
+    | '/auth'
+    | '/checkout/success'
+    | '/exams/$slug'
+    | '/exams/'
+    | '/exams/$slug/take'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthRoute: typeof AuthRoute
+  CheckoutSuccessRoute: typeof CheckoutSuccessRoute
+  ExamsSlugRoute: typeof ExamsSlugRouteWithChildren
+  ExamsIndexRoute: typeof ExamsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +123,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/exams/': {
+      id: '/exams/'
+      path: '/exams'
+      fullPath: '/exams/'
+      preLoaderRoute: typeof ExamsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exams/$slug': {
+      id: '/exams/$slug'
+      path: '/exams/$slug'
+      fullPath: '/exams/$slug'
+      preLoaderRoute: typeof ExamsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/checkout/success': {
+      id: '/checkout/success'
+      path: '/checkout/success'
+      fullPath: '/checkout/success'
+      preLoaderRoute: typeof CheckoutSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/exams/$slug/take': {
+      id: '/exams/$slug/take'
+      path: '/take'
+      fullPath: '/exams/$slug/take'
+      preLoaderRoute: typeof ExamsSlugTakeRouteImport
+      parentRoute: typeof ExamsSlugRoute
+    }
   }
 }
 
+interface ExamsSlugRouteChildren {
+  ExamsSlugTakeRoute: typeof ExamsSlugTakeRoute
+}
+
+const ExamsSlugRouteChildren: ExamsSlugRouteChildren = {
+  ExamsSlugTakeRoute: ExamsSlugTakeRoute,
+}
+
+const ExamsSlugRouteWithChildren = ExamsSlugRoute._addFileChildren(
+  ExamsSlugRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthRoute: AuthRoute,
+  CheckoutSuccessRoute: CheckoutSuccessRoute,
+  ExamsSlugRoute: ExamsSlugRouteWithChildren,
+  ExamsIndexRoute: ExamsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

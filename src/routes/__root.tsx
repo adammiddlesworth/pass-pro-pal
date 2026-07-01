@@ -77,14 +77,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "PassPal - Pass Your Licensing Exam" },
+      { name: "description", content: "PassPal helps you pass your real estate licensing exam and life & health insurance exam with realistic practice questions." },
+      { name: "author", content: "PassPal" },
+      { property: "og:title", content: "PassPal - Pass Your Licensing Exam" },
+      { property: "og:description", content: "PassPal helps you pass your real estate licensing exam and life & health insurance exam with realistic practice questions." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:site", content: "@passpal" },
     ],
     links: [
       {
@@ -114,13 +114,64 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
+
+function Navbar() {
+  const { user, loading } = useAuth();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  return (
+    <header className="border-b bg-background">
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+        <Link to="/" className="text-lg font-bold tracking-tight">
+          PassPal
+        </Link>
+        <nav className="flex items-center gap-4">
+          <Link
+            to="/exams"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Exams
+          </Link>
+          {loading ? null : user ? (
+            <button
+              onClick={handleSignOut}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Sign out
+            </button>
+          ) : (
+            <Link
+              to="/auth"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Sign in
+            </Link>
+          )}
+        </nav>
+      </div>
+    </header>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <div className="flex min-h-screen flex-col">
+        <Navbar />
+        <main className="flex-1">
+          <Outlet />
+        </main>
+        <footer className="border-t py-6 text-center text-sm text-muted-foreground">
+          <p>PassPal &copy; {new Date().getFullYear()}</p>
+        </footer>
+      </div>
     </QueryClientProvider>
   );
 }
