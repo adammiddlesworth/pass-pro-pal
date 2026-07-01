@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExamsIndexRouteImport } from './routes/exams.index'
+import { Route as ExamsSlugRouteImport } from './routes/exams.$slug'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -22,30 +23,39 @@ const ExamsIndexRoute = ExamsIndexRouteImport.update({
   path: '/exams/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExamsSlugRoute = ExamsSlugRouteImport.update({
+  id: '/exams/$slug',
+  path: '/exams/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/exams/$slug': typeof ExamsSlugRoute
   '/exams/': typeof ExamsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/exams/$slug': typeof ExamsSlugRoute
   '/exams': typeof ExamsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/exams/$slug': typeof ExamsSlugRoute
   '/exams/': typeof ExamsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/exams/'
+  fullPaths: '/' | '/exams/$slug' | '/exams/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/exams'
-  id: '__root__' | '/' | '/exams/'
+  to: '/' | '/exams/$slug' | '/exams'
+  id: '__root__' | '/' | '/exams/$slug' | '/exams/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ExamsSlugRoute: typeof ExamsSlugRoute
   ExamsIndexRoute: typeof ExamsIndexRoute
 }
 
@@ -65,11 +75,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamsIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/exams/$slug': {
+      id: '/exams/$slug'
+      path: '/exams/$slug'
+      fullPath: '/exams/$slug'
+      preLoaderRoute: typeof ExamsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ExamsSlugRoute: ExamsSlugRoute,
   ExamsIndexRoute: ExamsIndexRoute,
 }
 export const routeTree = rootRouteImport
