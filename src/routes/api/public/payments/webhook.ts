@@ -44,8 +44,7 @@ async function handleTransactionCompleted(data: any, env: PaddleEnv) {
     updated_at: new Date().toISOString(),
   }));
 
-  const { error } = await supabase
-    .from("purchases")
+  const { error } = await (supabase.from("purchases") as any)
     .upsert(rows, { onConflict: "user_id,product_id,environment" });
   if (error) console.error("purchases upsert error", error);
 }
