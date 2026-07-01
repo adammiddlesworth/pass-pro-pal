@@ -1,9 +1,19 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY!;
+
+// Category → Paddle product id map (single source of truth).
+export const CATEGORY_PRODUCT_IDS: Record<string, string> = {
+  real_estate: "real_estate_exam",
+  life_health_insurance: "life_health_exam",
+};
+
+// Number of preview questions any signed-in user gets before the paywall.
+export const FREEMIUM_PREVIEW_COUNT = 10;
 
 function getPublicClient() {
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
@@ -54,8 +64,6 @@ export const getExamQuestions = createServerFn({ method: "GET" })
     return questions || [];
   });
 
-import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-
 export const getUserPurchases = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -68,9 +76,33 @@ export const getUserPurchases = createServerFn({ method: "GET" })
     return data || [];
   });
 
+// Returns which categories the current user has purchased access to.
+export const getUserCategoryAccess = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("purchases")
+      .select("product_id")
+      .eq("user_id", context.userId)
+      .eq("status", "completed");
+    if (error) throw error;
+    const ownedProducts = new Set((data || []).map((p) => p.product_id));
+    const access: Record<string, boolean> = {};
+    for (const [category, productId] of Object.entries(CATEGORY_PRODUCT_IDS)) {
+      access[category] = ownedProducts.has(productId);
+    }
+    return access;
+  });
+
 export const createAttempt = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((data: { examId: string; total: number }) => data)
+  .inputValidator(
+    (data: {
+      examId: string | null;
+      total: number;
+      attemptType?: "exam" | "review";
+    }) => data
+  )
   .handler(async ({ data, context }) => {
     const { data: attempt, error } = await context.supabase
       .from("user_attempts")
@@ -78,6 +110,7 @@ export const createAttempt = createServerFn({ method: "POST" })
         user_id: context.userId,
         exam_id: data.examId,
         total: data.total,
+        attempt_type: data.attemptType ?? "exam",
         started_at: new Date().toISOString(),
       })
       .select()

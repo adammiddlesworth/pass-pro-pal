@@ -237,9 +237,10 @@ export type Database = {
       }
       user_attempts: {
         Row: {
+          attempt_type: string
           completed_at: string | null
           created_at: string
-          exam_id: string
+          exam_id: string | null
           id: string
           score: number | null
           started_at: string
@@ -247,9 +248,10 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attempt_type?: string
           completed_at?: string | null
           created_at?: string
-          exam_id: string
+          exam_id?: string | null
           id?: string
           score?: number | null
           started_at?: string
@@ -257,9 +259,10 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attempt_type?: string
           completed_at?: string | null
           created_at?: string
-          exam_id?: string
+          exam_id?: string | null
           id?: string
           score?: number | null
           started_at?: string
@@ -285,7 +288,7 @@ export type Database = {
     }
     Enums: {
       exam_category: "real_estate" | "life_health_insurance"
-      exam_status: "draft" | "published"
+      exam_status: "draft" | "published" | "archived"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -414,7 +417,7 @@ export const Constants = {
   public: {
     Enums: {
       exam_category: ["real_estate", "life_health_insurance"],
-      exam_status: ["draft", "published"],
+      exam_status: ["draft", "published", "archived"],
     },
   },
 } as const

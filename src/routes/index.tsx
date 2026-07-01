@@ -60,21 +60,18 @@ function HomePage() {
             </p>
             <ul className="mt-4 space-y-2 text-sm text-secondary/80">
               <li className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-primary" /> Free 10-question sample
+                <CheckCircle2 className="h-4 w-4 text-primary" /> First 10 questions of every exam free
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-primary" /> Full 50-question practice exam
+                <CheckCircle2 className="h-4 w-4 text-primary" /> Unlock the full track with one purchase
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-primary" /> Detailed answer explanations
               </li>
             </ul>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link to="/exams/real-estate-sample">
-                <Button>Try Free Sample</Button>
-              </Link>
               <Link to="/exams">
-                <Button variant="outline">See Full Exam</Button>
+                <Button>Browse Real Estate Exams</Button>
               </Link>
             </div>
           </div>
@@ -91,21 +88,18 @@ function HomePage() {
             </p>
             <ul className="mt-4 space-y-2 text-sm text-secondary/80">
               <li className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-secondary" /> Free 10-question sample
+                <CheckCircle2 className="h-4 w-4 text-secondary" /> First 10 questions of every exam free
               </li>
               <li className="flex items-center gap-2">
-                <CheckCircle2 className="h-4 w-4 text-secondary" /> Full 50-question practice exam
+                <CheckCircle2 className="h-4 w-4 text-secondary" /> Unlock the full track with one purchase
               </li>
               <li className="flex items-center gap-2">
                 <CheckCircle2 className="h-4 w-4 text-secondary" /> Detailed answer explanations
               </li>
             </ul>
             <div className="mt-6 flex flex-wrap gap-3">
-              <Link to="/exams/life-health-sample">
-                <Button variant="secondary">Try Free Sample</Button>
-              </Link>
               <Link to="/exams">
-                <Button variant="outline">See Full Exam</Button>
+                <Button variant="secondary">Browse Life & Health Exams</Button>
               </Link>
             </div>
           </div>
