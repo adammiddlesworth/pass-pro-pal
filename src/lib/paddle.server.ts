@@ -1,4 +1,6 @@
-import { Environment, Paddle } from "@paddle/paddle-node-sdk";
+import { Environment, Paddle, EventName } from "@paddle/paddle-node-sdk";
+
+export { EventName };
 
 const GATEWAY_BASE_URL = "https://connector-gateway.lovable.dev/paddle";
 
@@ -46,3 +48,19 @@ export async function gatewayFetch(
     },
   });
 }
+
+function getWebhookSecret(env: PaddleEnv): string {
+  return env === "sandbox"
+    ? getEnv("PAYMENTS_SANDBOX_WEBHOOK_SECRET")
+    : getEnv("PAYMENTS_LIVE_WEBHOOK_SECRET");
+}
+
+export async function verifyWebhook(req: Request, env: PaddleEnv) {
+  const signature = req.headers.get("paddle-signature");
+  const body = await req.text();
+  const secret = getWebhookSecret(env);
+  if (!signature || !body) throw new Error("Missing signature or body");
+  const paddle = getPaddleClient(env);
+  return await paddle.webhooks.unmarshal(body, secret, signature);
+}
+
