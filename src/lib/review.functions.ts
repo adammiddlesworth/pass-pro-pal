@@ -21,6 +21,7 @@ export const getWeakSpotsReview = createServerFn({ method: "GET" })
   })
   .handler(async ({ data, context }): Promise<ReviewStatus> => {
     const { supabase, userId } = context;
+    void userId;
     const category = data.category;
     const productId = CATEGORY_PRODUCT_IDS[category];
 
