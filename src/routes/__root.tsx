@@ -114,13 +114,64 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+import { useAuth } from "@/hooks/use-auth";
+import { supabase } from "@/integrations/supabase/client";
+
+function Navbar() {
+  const { user, loading } = useAuth();
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
+
+  return (
+    <header className="border-b bg-background">
+      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+        <Link to="/" className="text-lg font-bold tracking-tight">
+          PassPal
+        </Link>
+        <nav className="flex items-center gap-4">
+          <Link
+            to="/exams"
+            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Exams
+          </Link>
+          {loading ? null : user ? (
+            <button
+              onClick={handleSignOut}
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Sign out
+            </button>
+          ) : (
+            <Link
+              to="/auth"
+              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            >
+              Sign in
+            </Link>
+          )}
+        </nav>
+      </div>
+    </header>
+  );
+}
+
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <div className="flex min-h-screen flex-col">
+        <Navbar />
+        <main className="flex-1">
+          <Outlet />
+        </main>
+        <footer className="border-t py-6 text-center text-sm text-muted-foreground">
+          <p>PassPal &copy; {new Date().getFullYear()}</p>
+        </footer>
+      </div>
     </QueryClientProvider>
   );
 }
