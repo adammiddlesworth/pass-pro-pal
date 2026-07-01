@@ -14,7 +14,268 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      answers: {
+        Row: {
+          created_at: string
+          id: string
+          is_correct: boolean
+          order_index: number
+          question_id: string
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          order_index?: number
+          question_id: string
+          text: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_correct?: boolean
+          order_index?: number
+          question_id?: string
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      exams: {
+        Row: {
+          category: Database["public"]["Enums"]["exam_category"]
+          created_at: string
+          description: string | null
+          id: string
+          is_sample: boolean
+          price_cents: number | null
+          product_id: string | null
+          question_count: number
+          slug: string
+          status: Database["public"]["Enums"]["exam_status"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          category: Database["public"]["Enums"]["exam_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_sample?: boolean
+          price_cents?: number | null
+          product_id?: string | null
+          question_count?: number
+          slug: string
+          status?: Database["public"]["Enums"]["exam_status"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          category?: Database["public"]["Enums"]["exam_category"]
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_sample?: boolean
+          price_cents?: number | null
+          product_id?: string | null
+          question_count?: number
+          slug?: string
+          status?: Database["public"]["Enums"]["exam_status"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      purchases: {
+        Row: {
+          created_at: string
+          environment: string
+          id: string
+          price_id: string
+          product_id: string
+          status: string
+          transaction_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          environment?: string
+          id?: string
+          price_id: string
+          product_id: string
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          environment?: string
+          id?: string
+          price_id?: string
+          product_id?: string
+          status?: string
+          transaction_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      questions: {
+        Row: {
+          created_at: string
+          exam_id: string
+          explanation: string | null
+          id: string
+          order_index: number
+          text: string
+        }
+        Insert: {
+          created_at?: string
+          exam_id: string
+          explanation?: string | null
+          id?: string
+          order_index?: number
+          text: string
+        }
+        Update: {
+          created_at?: string
+          exam_id?: string
+          explanation?: string | null
+          id?: string
+          order_index?: number
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "questions_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_answers: {
+        Row: {
+          answer_id: string
+          answered_at: string
+          attempt_id: string
+          id: string
+          is_correct: boolean
+          question_id: string
+        }
+        Insert: {
+          answer_id: string
+          answered_at?: string
+          attempt_id: string
+          id?: string
+          is_correct?: boolean
+          question_id: string
+        }
+        Update: {
+          answer_id?: string
+          answered_at?: string
+          attempt_id?: string
+          id?: string
+          is_correct?: boolean
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_answers_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: false
+            referencedRelation: "answers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_answers_attempt_id_fkey"
+            columns: ["attempt_id"]
+            isOneToOne: false
+            referencedRelation: "user_attempts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_attempts: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          exam_id: string
+          id: string
+          score: number | null
+          started_at: string
+          total: number
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          exam_id: string
+          id?: string
+          score?: number | null
+          started_at?: string
+          total: number
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          exam_id?: string
+          id?: string
+          score?: number | null
+          started_at?: string
+          total?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_attempts_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +284,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      exam_category: "real_estate" | "life_health_insurance"
+      exam_status: "draft" | "published"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +412,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      exam_category: ["real_estate", "life_health_insurance"],
+      exam_status: ["draft", "published"],
+    },
   },
 } as const
