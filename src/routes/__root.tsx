@@ -77,14 +77,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "PassPal - Pass Your Licensing Exam" },
+      { name: "description", content: "PassPal helps you pass your real estate licensing exam and life & health insurance exam with realistic practice questions." },
+      { name: "author", content: "PassPal" },
+      { property: "og:title", content: "PassPal - Pass Your Licensing Exam" },
+      { property: "og:description", content: "PassPal helps you pass your real estate licensing exam and life & health insurance exam with realistic practice questions." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:site", content: "@passpal" },
     ],
     links: [
       {
