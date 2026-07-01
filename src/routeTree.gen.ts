@@ -15,6 +15,7 @@ import { Route as ExamsIndexRouteImport } from './routes/exams.index'
 import { Route as ExamsSlugRouteImport } from './routes/exams.$slug'
 import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
 import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
+import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
 const AuthRoute = AuthRouteImport.update({
   id: '/auth',
@@ -46,6 +47,12 @@ const ExamsSlugTakeRoute = ExamsSlugTakeRouteImport.update({
   path: '/take',
   getParentRoute: () => ExamsSlugRoute,
 } as any)
+const ApiPublicPaymentsWebhookRoute =
+  ApiPublicPaymentsWebhookRouteImport.update({
+    id: '/api/public/payments/webhook',
+    path: '/api/public/payments/webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByFullPath {
   '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/exams/': typeof ExamsIndexRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -62,6 +70,7 @@ export interface FileRoutesByTo {
   '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/exams': typeof ExamsIndexRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -71,6 +80,7 @@ export interface FileRoutesById {
   '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/exams/': typeof ExamsIndexRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
+  '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -81,6 +91,7 @@ export interface FileRouteTypes {
     | '/exams/$slug'
     | '/exams/'
     | '/exams/$slug/take'
+    | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -89,6 +100,7 @@ export interface FileRouteTypes {
     | '/exams/$slug'
     | '/exams'
     | '/exams/$slug/take'
+    | '/api/public/payments/webhook'
   id:
     | '__root__'
     | '/'
@@ -97,6 +109,7 @@ export interface FileRouteTypes {
     | '/exams/$slug'
     | '/exams/'
     | '/exams/$slug/take'
+    | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -105,6 +118,7 @@ export interface RootRouteChildren {
   CheckoutSuccessRoute: typeof CheckoutSuccessRoute
   ExamsSlugRoute: typeof ExamsSlugRouteWithChildren
   ExamsIndexRoute: typeof ExamsIndexRoute
+  ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -151,6 +165,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamsSlugTakeRouteImport
       parentRoute: typeof ExamsSlugRoute
     }
+    '/api/public/payments/webhook': {
+      id: '/api/public/payments/webhook'
+      path: '/api/public/payments/webhook'
+      fullPath: '/api/public/payments/webhook'
+      preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -172,6 +193,7 @@ const rootRouteChildren: RootRouteChildren = {
   CheckoutSuccessRoute: CheckoutSuccessRoute,
   ExamsSlugRoute: ExamsSlugRouteWithChildren,
   ExamsIndexRoute: ExamsIndexRoute,
+  ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
