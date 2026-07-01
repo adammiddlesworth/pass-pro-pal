@@ -1,4 +1,6 @@
-import { Environment, Paddle } from "@paddle/paddle-node-sdk";
+import { Environment, Paddle, EventName } from "@paddle/paddle-node-sdk";
+
+export { EventName };
 
 const GATEWAY_BASE_URL = "https://connector-gateway.lovable.dev/paddle";
 
