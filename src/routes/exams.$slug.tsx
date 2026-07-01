@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery } from "@tanstack/react-query";
+import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   getExamBySlug,
