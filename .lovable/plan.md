@@ -1,132 +1,50 @@
-## Overview
 
-Build **PassPal**, a freemium web app offering practice exams for two categories:
-- **Real Estate Licensing**
-- **Life & Health Insurance**
+## Brand direction
 
-Each category has a free 10-question sample quiz and full practice exams behind a paywall. Users create accounts to track scores, attempts, and progress over time. Exams are designed to be linked directly from YouTube marketing.
+From the uploaded logos, the PassPal brand is:
+- **Primary green** ~ `#22c55e` (checkmark chat bubble)
+- **Deep green** ~ `#0f7a4a` (back "P" mark)
+- **Navy** ~ `#0a1a4a` (wordmark on light bg, and dark background variant)
+- **White** for reversed marks
 
-## Tech Stack
+I'll treat green as the primary action color and navy as the anchor/text color, with white and a soft off-white for surfaces.
 
-- TanStack Start (file-based routing, server functions)
-- Tailwind CSS + shadcn/ui components
-- Lovable Cloud (auth, PostgreSQL, RLS)
-- Built-in payments (Stripe or Paddle — TBD by eligibility check)
+## What I'll do
 
-## Database Schema
+1. **Upload logos as CDN assets** (via `lovable-assets`) — no binaries in the repo:
+   - `logo-full-light.png` (user-uploads://1.png — color logo on white, for light UI)
+   - `logo-full-dark.png` (user-uploads://4-2.png — color logo on navy, for dark sections)
+   - `logo-mark-white.png` (user-uploads://2.png — white mark, for green/navy backgrounds)
+   - `logo-full-green.png` (user-uploads://2-2.png — white on green, marketing)
+   - Favicon source: crop from the mark; save as `public/favicon.png`, delete default `public/favicon.ico`, and update `<link rel="icon">` in `src/routes/__root.tsx`.
 
-### `profiles`
-- `id` (uuid, PK, refs `auth.users`)
-- `display_name` (text)
-- `created_at`, `updated_at`
-- Trigger: auto-create on signup
+2. **Design tokens** (`src/styles.css`) — replace the current generic theme with PassPal palette:
+   - `--primary` → PassPal green, `--primary-foreground` → white
+   - `--accent` → deep green, `--secondary` → navy
+   - `--background`, `--foreground`, `--muted`, `--border` retuned to complement
+   - Add gradient token `--gradient-brand: linear-gradient(135deg, deep-green → primary-green)` for hero/CTA surfaces
+   - Keep semantic tokens only — no hardcoded colors in components
 
-### `exams`
-- `id` (uuid, PK)
-- `category` (enum: `real_estate`, `life_health_insurance`)
-- `title` (text)
-- `slug` (text, unique)
-- `description` (text)
-- `question_count` (int)
-- `is_sample` (boolean) — true for the free 10-question quizzes
-- `price_cents` (int, nullable) — null for free sample
-- `status` (enum: `draft`, `published`)
+3. **Navbar (`src/routes/__root.tsx`)**:
+   - Replace the "PassPal" text with the full color logo (light variant), sized ~28px tall
+   - Keep nav links; style active state in brand green
 
-### `questions`
-- `id` (uuid, PK)
-- `exam_id` (uuid, refs `exams`)
-- `text` (text)
-- `explanation` (text) — shown after answering
-- `order_index` (int)
+4. **Landing page (`src/routes/index.tsx`)**:
+   - Hero uses the brand gradient as background with the reversed (white) logo mark as a decorative element
+   - Track chooser cards get subtle brand-colored borders/accents (green for Real Estate, navy for Life & Health) so the two tracks feel visually distinct — extending the "stronger visual separation" direction from the previous turn
+   - CTA buttons use primary green
 
-### `answers`
-- `id` (uuid, PK)
-- `question_id` (uuid, refs `questions`)
-- `text` (text)
-- `is_correct` (boolean)
-- `order_index` (int)
+5. **Auth page (`src/routes/auth.tsx`)** and **Checkout success page**: show the logo above the card
 
-### `user_attempts`
-- `id` (uuid, PK)
-- `user_id` (uuid, refs `auth.users`)
-- `exam_id` (uuid, refs `exams`)
-- `started_at` (timestamptz)
-- `completed_at` (timestamptz, nullable)
-- `score` (int, nullable) — number correct
-- `total` (int) — total questions
+6. **Footer**: small logo mark + copyright in navy
 
-### `user_answers`
-- `id` (uuid, PK)
-- `attempt_id` (uuid, refs `user_attempts`)
-- `question_id` (uuid, refs `questions`)
-- `answer_id` (uuid, refs `answers`)
-- `is_correct` (boolean)
-- `answered_at` (timestamptz)
+## Technical section
 
-## Pages & Routes
+- Assets created with `lovable-assets create --file /mnt/user-uploads/<file> --filename <name>.png > src/assets/<name>.png.asset.json`, imported as JSON in components
+- Favicon: copy chosen mark to `public/favicon.png`, `rm public/favicon.ico`, update `links` in root route `head()`
+- Color tokens stored as `oklch(...)` in `src/styles.css` under `:root`; no changes to `tailwind.config`
+- No routing or database changes; this is purely presentation
 
-| Route | Purpose |
-|-------|---------|
-| `/` | Landing page with hero, exam categories, CTA to sign up |
-| `/exams` | Browse all exams by category |
-| `/exams/$slug` | Exam detail page (description, question count, start button) |
-| `/exams/$slug/quiz` | Active quiz interface (one question at a time, progress bar, timer optional) |
-| `/exams/$slug/results` | Results page with score, correct/incorrect breakdown, explanations |
-| `/dashboard` | User dashboard: history, scores, progress stats |
-| `/pricing` | Paywall page showing full exam access pricing |
-| `/auth` | Login / signup (email + Google) |
-| `/reset-password` | Password reset flow |
+## Not in this change
 
-## Auth
-
-- Email/password + Google OAuth (via Lovable Cloud broker)
-- User profiles table with auto-create trigger
-- Protected routes under `/_authenticated/` (dashboard, quiz for paid exams)
-
-## Exam Flow
-
-1. **Free sample**: any visitor or signed-in user can take the 10-question sample quiz for each category.
-2. **Full exam**: requires purchase. Unauthenticated users are prompted to sign up; authenticated but unpaid users see the pricing page.
-3. **Quiz UI**: single question per screen, selectable answers, "Next" / "Submit", progress bar, optional timer.
-4. **Results**: immediate score, review mode with explanations.
-5. **Dashboard**: list of all attempts with scores, dates, and category breakdown.
-
-## Payments
-
-- Freemium: free sample quizzes; full exams require one-time purchase or bundle.
-- Run `recommend_payment_provider` to choose between Paddle and Stripe.
-- Enable payments, create products for:
-  - Real Estate Full Exam Access
-  - Life & Health Insurance Full Exam Access
-  - Bundle (both categories)
-- Gate full exam routes on purchase status; show pricing CTA if not purchased.
-
-## Seed Data
-
-- Insert 2 sample exams (1 per category, 10 questions each) with realistic placeholder questions so the app is fully demoable.
-- Insert 2 full exams (1 per category, ~50 questions each) with placeholder questions.
-- All questions have 4 answer choices and explanations.
-
-## YouTube Marketing Integration
-
-- Each exam detail page (`/exams/$slug`) is the canonical landing URL for YouTube CTAs.
-- Clean URLs, fast load, mobile-friendly quiz UI.
-- OG tags per exam for social sharing.
-
-## Design Direction
-
-- Clean, focused, exam-study aesthetic — minimal distractions.
-- Clear progress indicators and encouraging feedback.
-- Mobile-first: many users will arrive from YouTube on mobile.
-
-## Implementation Order
-
-1. Enable Lovable Cloud.
-2. Run `recommend_payment_provider`, then enable chosen payment provider.
-3. Create database tables via migration.
-4. Set up auth (profiles, Google OAuth).
-5. Seed sample and full exam placeholder data.
-6. Build public pages: landing, exam browser, exam detail, free sample quiz flow.
-7. Build auth-protected pages: dashboard, full exam quiz flow.
-8. Integrate payments and paywall gating.
-9. Polish: results review, OG tags, mobile QA.
+- The track-separation work from the previous turn (removing the bundle, splitting `/real-estate` and `/life-health`) is still pending — I'll pick that back up next turn unless you want me to bundle it in.
