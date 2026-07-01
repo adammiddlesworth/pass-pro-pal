@@ -57,6 +57,17 @@ function ExamDetailPage() {
       });
       (window as any).Paddle.Checkout.open({
         items: [{ priceId: internalPriceId, quantity: 1 }],
+        customer: user?.email ? { email: user.email } : undefined,
+        customData: {
+          userId: user?.id ?? "",
+          productId: exam.product_id,
+          priceId: `${exam.product_id}_price`,
+        },
+        settings: {
+          displayMode: "overlay",
+          successUrl: `${window.location.origin}/checkout/success`,
+          allowLogout: false,
+        },
       });
     } catch (e) {
       console.error(e);
