@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useSuspenseQuery, useQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   getExamBySlug,
   getExamQuestions,
-  getUserPurchases,
+  getUserCategoryAccess,
+  CATEGORY_PRODUCT_IDS,
+  FREEMIUM_PREVIEW_COUNT,
 } from "@/lib/exams.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -34,44 +36,36 @@ function ExamDetailPage() {
   const { user } = useAuth();
   const [checkingOut, setCheckingOut] = useState(false);
 
-  const { data: purchases } = useQuery({
-    queryKey: ["purchases"],
-    queryFn: () => getUserPurchases(),
-    enabled: !!user && !exam.is_sample,
+  const { data: access } = useQuery({
+    queryKey: ["category-access"],
+    queryFn: () => getUserCategoryAccess(),
+    enabled: !!user,
   });
 
-  const hasPurchased =
-    exam.is_sample ||
-    (purchases ?? []).some(
-      (p) => p.product_id === exam.product_id && p.status === "completed"
-    );
+  const productId = CATEGORY_PRODUCT_IDS[exam.category];
+  const hasAccess = !!access?.[exam.category];
 
   const handleBuy = async () => {
-    if (!exam.product_id) return;
+    if (!productId) return;
     setCheckingOut(true);
     try {
       await initializePaddle();
       const env = getPaddleEnvironment();
       const internalPriceId = await resolvePaddlePrice({
-        data: { priceId: `${exam.product_id}_price`, environment: env },
+        data: { priceId: `${productId}_price`, environment: env },
       });
       (window as any).Paddle.Checkout.open({
         items: [{ priceId: internalPriceId, quantity: 1 }],
         customer: user?.email ? { email: user.email } : undefined,
         customData: {
           userId: user?.id ?? "",
-          productId: exam.product_id,
-          priceId: `${exam.product_id}_price`,
+          productId,
+          priceId: `${productId}_price`,
         },
         settings: {
-          displayMode: "overlay",
           successUrl: `${window.location.origin}/checkout/success`,
-          allowLogout: false,
         },
       });
-    } catch (e) {
-      console.error(e);
-      alert("Checkout failed. Please try again.");
     } finally {
       setCheckingOut(false);
     }
@@ -91,13 +85,11 @@ function ExamDetailPage() {
       <div className="mb-8">
         <h1 className="text-3xl font-bold">{exam.title}</h1>
         <div className="mt-2 flex items-center gap-2">
-          {exam.is_sample ? (
-            <Badge variant="secondary">Free Sample</Badge>
-          ) : (
-            <Badge variant="default">Full Exam</Badge>
-          )}
+          <Badge variant={hasAccess ? "default" : "secondary"}>
+            {hasAccess ? "Full Access" : `Free preview: ${FREEMIUM_PREVIEW_COUNT} questions`}
+          </Badge>
           <span className="text-sm text-muted-foreground">
-            {exam.question_count} questions
+            {exam.question_count} questions total
           </span>
         </div>
         {exam.description && (
@@ -112,43 +104,38 @@ function ExamDetailPage() {
           <CardTitle>Ready to practice?</CardTitle>
         </CardHeader>
         <CardContent>
-          {exam.is_sample ? (
+          {!user ? (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                This free sample quiz includes {exam.question_count} questions.
-                No account required.
+                Sign in to start the free {FREEMIUM_PREVIEW_COUNT}-question preview.
               </p>
-              <Link to="/exams/$slug/take" params={{ slug: exam.slug }}>
-                <Button size="lg">Start Free Quiz</Button>
+              <Link to="/auth">
+                <Button size="lg">Sign In to Start</Button>
               </Link>
             </div>
-          ) : hasPurchased ? (
+          ) : hasAccess ? (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                You have access to this full exam.
+                You have full access to every exam in this track.
               </p>
               <Link to="/exams/$slug/take" params={{ slug: exam.slug }}>
                 <Button size="lg">Start Full Exam</Button>
               </Link>
             </div>
-          ) : user ? (
-            <div className="space-y-4">
-              <p className="text-sm text-muted-foreground">
-                Unlock the full {exam.question_count}-question exam for just{" "}
-                ${((exam.price_cents ?? 0) / 100).toFixed(2)}.
-              </p>
-              <Button size="lg" onClick={handleBuy} disabled={checkingOut}>
-                {checkingOut ? "Loading..." : "Buy Now"}
-              </Button>
-            </div>
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Sign in to purchase and take this full exam.
+                Start with the first {FREEMIUM_PREVIEW_COUNT} questions free. Unlock every exam in this
+                track for ${((exam.price_cents ?? 0) / 100).toFixed(2)}.
               </p>
-              <Link to="/auth">
-                <Button size="lg">Sign In to Purchase</Button>
-              </Link>
+              <div className="flex flex-wrap gap-3">
+                <Link to="/exams/$slug/take" params={{ slug: exam.slug }}>
+                  <Button size="lg">Start Free Preview</Button>
+                </Link>
+                <Button size="lg" variant="outline" onClick={handleBuy} disabled={checkingOut}>
+                  {checkingOut ? "Loading..." : "Unlock Full Access"}
+                </Button>
+              </div>
             </div>
           )}
         </CardContent>
