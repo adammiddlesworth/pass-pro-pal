@@ -124,7 +124,7 @@ function QuizPage() {
         </div>
 
         <div className="space-y-6">
-          {questions.map((q) => {
+          {questions.map((q: typeof questions[0]) => {
             const selected = selectedAnswers[q.id];
             const correctAnswer = q.answers.find((a: any) => a.is_correct);
             const isCorrect = selected === correctAnswer?.id;
