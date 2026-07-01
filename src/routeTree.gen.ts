@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExamsIndexRouteImport } from './routes/exams.index'
 import { Route as ExamsSlugRouteImport } from './routes/exams.$slug'
+import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -28,34 +29,42 @@ const ExamsSlugRoute = ExamsSlugRouteImport.update({
   path: '/exams/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ExamsSlugTakeRoute = ExamsSlugTakeRouteImport.update({
+  id: '/take',
+  path: '/take',
+  getParentRoute: () => ExamsSlugRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/exams/$slug': typeof ExamsSlugRoute
+  '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/exams/': typeof ExamsIndexRoute
+  '/exams/$slug/take': typeof ExamsSlugTakeRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/exams/$slug': typeof ExamsSlugRoute
+  '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/exams': typeof ExamsIndexRoute
+  '/exams/$slug/take': typeof ExamsSlugTakeRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/exams/$slug': typeof ExamsSlugRoute
+  '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/exams/': typeof ExamsIndexRoute
+  '/exams/$slug/take': typeof ExamsSlugTakeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/exams/$slug' | '/exams/'
+  fullPaths: '/' | '/exams/$slug' | '/exams/' | '/exams/$slug/take'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/exams/$slug' | '/exams'
-  id: '__root__' | '/' | '/exams/$slug' | '/exams/'
+  to: '/' | '/exams/$slug' | '/exams' | '/exams/$slug/take'
+  id: '__root__' | '/' | '/exams/$slug' | '/exams/' | '/exams/$slug/take'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ExamsSlugRoute: typeof ExamsSlugRoute
+  ExamsSlugRoute: typeof ExamsSlugRouteWithChildren
   ExamsIndexRoute: typeof ExamsIndexRoute
 }
 
@@ -82,12 +91,31 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/exams/$slug/take': {
+      id: '/exams/$slug/take'
+      path: '/take'
+      fullPath: '/exams/$slug/take'
+      preLoaderRoute: typeof ExamsSlugTakeRouteImport
+      parentRoute: typeof ExamsSlugRoute
+    }
   }
 }
 
+interface ExamsSlugRouteChildren {
+  ExamsSlugTakeRoute: typeof ExamsSlugTakeRoute
+}
+
+const ExamsSlugRouteChildren: ExamsSlugRouteChildren = {
+  ExamsSlugTakeRoute: ExamsSlugTakeRoute,
+}
+
+const ExamsSlugRouteWithChildren = ExamsSlugRoute._addFileChildren(
+  ExamsSlugRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ExamsSlugRoute: ExamsSlugRoute,
+  ExamsSlugRoute: ExamsSlugRouteWithChildren,
   ExamsIndexRoute: ExamsIndexRoute,
 }
 export const routeTree = rootRouteImport

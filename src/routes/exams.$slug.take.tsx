@@ -103,7 +103,7 @@ function QuizPage() {
   };
 
   if (submitted) {
-    const score = questions.reduce((acc, q) => {
+    const score = questions.reduce((acc: number, q: typeof questions[0]) => {
       const selected = selectedAnswers[q.id];
       const correct = q.answers.find((a: any) => a.is_correct)?.id;
       return selected === correct ? acc + 1 : acc;
