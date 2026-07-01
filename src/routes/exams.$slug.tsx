@@ -34,7 +34,7 @@ function ExamDetailPage() {
   const { user } = useAuth();
   const [checkingOut, setCheckingOut] = useState(false);
 
-  const { data: purchases } = useSuspenseQuery({
+  const { data: purchases } = useQuery({
     queryKey: ["purchases"],
     queryFn: () => getUserPurchases(),
     enabled: !!user && !exam.is_sample,
