@@ -37,27 +37,15 @@ export const getWeakSpotsReview = createServerFn({ method: "GET" })
     }
 
     // 2. Pull the user's answers scoped to this category.
-    //    Nested filter: only answers whose question belongs to an exam in this category.
+    //    RLS on user_answers already limits rows to the current user via user_attempts.
     const { data: userAnswers, error } = await supabase
       .from("user_answers")
       .select(
         "question_id, is_correct, answered_at, questions!inner(id, exam_id, exams!inner(category))"
       )
-      .eq("user_id" as any, userId) // policy scopes via attempt anyway; keep as safety
       .eq("questions.exams.category", category as any);
-    // The user_answers table doesn't have user_id directly, RLS scopes it via attempt.
-    // Re-run without user_id filter if the client rejected it:
-    let rows = userAnswers as any[] | null;
-    if (error || !rows) {
-      const { data: fallback, error: err2 } = await supabase
-        .from("user_answers")
-        .select(
-          "question_id, is_correct, answered_at, questions!inner(id, exam_id, exams!inner(category))"
-        )
-        .eq("questions.exams.category", category as any);
-      if (err2) throw err2;
-      rows = fallback as any[];
-    }
+    if (error) throw error;
+    const rows = userAnswers as any[] | null;
 
     // 3. Aggregate per question.
     const stats = new Map<
