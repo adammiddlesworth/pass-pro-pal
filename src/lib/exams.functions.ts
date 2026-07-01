@@ -53,3 +53,73 @@ export const getExamQuestions = createServerFn({ method: "GET" })
     if (error) throw error;
     return questions || [];
   });
+
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+
+export const getUserPurchases = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data, error } = await context.supabase
+      .from("purchases")
+      .select("*")
+      .eq("user_id", context.userId)
+      .eq("status", "completed");
+    if (error) throw error;
+    return data || [];
+  });
+
+export const createAttempt = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { examId: string; total: number }) => data)
+  .handler(async ({ data, context }) => {
+    const { data: attempt, error } = await context.supabase
+      .from("user_attempts")
+      .insert({
+        user_id: context.userId,
+        exam_id: data.examId,
+        total: data.total,
+        started_at: new Date().toISOString(),
+      })
+      .select()
+      .single();
+    if (error) throw error;
+    return attempt;
+  });
+
+export const saveUserAnswer = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: {
+      attemptId: string;
+      questionId: string;
+      answerId: string;
+      isCorrect: boolean;
+    }) => data
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("user_answers").insert({
+      attempt_id: data.attemptId,
+      question_id: data.questionId,
+      answer_id: data.answerId,
+      is_correct: data.isCorrect,
+      answered_at: new Date().toISOString(),
+    });
+    if (error) throw error;
+  });
+
+export const completeAttempt = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    (data: { attemptId: string; score: number; total: number }) => data
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("user_attempts")
+      .update({
+        score: data.score,
+        total: data.total,
+        completed_at: new Date().toISOString(),
+      })
+      .eq("id", data.attemptId);
+    if (error) throw error;
+  });
