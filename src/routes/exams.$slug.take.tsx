@@ -1,17 +1,24 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import {
   getExamBySlug,
   getExamQuestions,
+  getUserCategoryAccess,
   createAttempt,
   saveUserAnswer,
   completeAttempt,
+  CATEGORY_PRODUCT_IDS,
+  FREEMIUM_PREVIEW_COUNT,
 } from "@/lib/exams.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Lock } from "lucide-react";
+import { initializePaddle, getPaddleEnvironment } from "@/lib/paddle";
+import { resolvePaddlePrice } from "@/utils/payments.functions";
 
 export const Route = createFileRoute("/exams/$slug/take")({
   loader: async ({ params, context }) => {
@@ -35,9 +42,20 @@ function QuizPage() {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [checkingOut, setCheckingOut] = useState(false);
 
+  const { data: access } = useQuery({
+    queryKey: ["category-access"],
+    queryFn: () => getUserCategoryAccess(),
+    enabled: !!user,
+  });
+  const hasAccess = !!access?.[exam.category];
+
+  const previewLimit = Math.min(FREEMIUM_PREVIEW_COUNT, questions.length);
+  const effectiveTotal = hasAccess ? questions.length : previewLimit;
   const currentQuestion = questions[currentIndex];
-  const progress = ((currentIndex + 1) / questions.length) * 100;
+  const paywalled = !hasAccess && currentIndex >= previewLimit;
+  const progress = ((Math.min(currentIndex, effectiveTotal) + (submitted ? 1 : 0)) / effectiveTotal) * 100;
 
   const selectAnswer = (answerId: string) => {
     if (submitted) return;
@@ -45,14 +63,36 @@ function QuizPage() {
   };
 
   const goNext = () => {
-    if (currentIndex < questions.length - 1) {
-      setCurrentIndex((i) => i + 1);
-    }
+    if (currentIndex < questions.length - 1) setCurrentIndex((i) => i + 1);
+  };
+  const goPrev = () => {
+    if (currentIndex > 0) setCurrentIndex((i) => i - 1);
   };
 
-  const goPrev = () => {
-    if (currentIndex > 0) {
-      setCurrentIndex((i) => i - 1);
+  const handleUnlock = async () => {
+    const productId = CATEGORY_PRODUCT_IDS[exam.category];
+    if (!productId) return;
+    setCheckingOut(true);
+    try {
+      await initializePaddle();
+      const env = getPaddleEnvironment();
+      const internalPriceId = await resolvePaddlePrice({
+        data: { priceId: `${productId}_price`, environment: env },
+      });
+      (window as any).Paddle.Checkout.open({
+        items: [{ priceId: internalPriceId, quantity: 1 }],
+        customer: user?.email ? { email: user.email } : undefined,
+        customData: {
+          userId: user?.id ?? "",
+          productId,
+          priceId: `${productId}_price`,
+        },
+        settings: {
+          successUrl: `${window.location.origin}/checkout/success`,
+        },
+      });
+    } finally {
+      setCheckingOut(false);
     }
   };
 
@@ -62,18 +102,19 @@ function QuizPage() {
 
     setSaving(true);
     try {
+      const gradeable = questions.slice(0, effectiveTotal);
       let correctCount = 0;
-      for (const q of questions) {
+      for (const q of gradeable) {
         const selected = selectedAnswers[q.id];
         const correct = q.answers.find((a: any) => a.is_correct)?.id;
         if (selected === correct) correctCount++;
       }
 
       const attempt = await createAttempt({
-        data: { examId: exam.id, total: questions.length },
+        data: { examId: exam.id, total: gradeable.length, attemptType: "exam" },
       });
 
-      for (const q of questions) {
+      for (const q of gradeable) {
         const selected = selectedAnswers[q.id];
         const correctAnswer = q.answers.find((a: any) => a.is_correct);
         if (selected) {
@@ -92,7 +133,7 @@ function QuizPage() {
         data: {
           attemptId: attempt.id,
           score: correctCount,
-          total: questions.length,
+          total: gradeable.length,
         },
       });
     } catch (e) {
@@ -102,8 +143,40 @@ function QuizPage() {
     }
   };
 
+  // Paywall interstitial — user hit the free preview cap.
+  if (paywalled && !submitted) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Lock className="h-7 w-7" />
+            </div>
+            <h1 className="text-2xl font-bold">You've hit the free preview limit</h1>
+            <p className="mx-auto mt-3 max-w-md text-muted-foreground">
+              You've answered the first {previewLimit} questions of this exam. Unlock full
+              access to finish this exam and every other exam in this track.
+            </p>
+            <p className="mt-2 text-sm text-muted-foreground">
+              Your progress so far is saved — you can pick up right where you left off after upgrading.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Button size="lg" onClick={handleUnlock} disabled={checkingOut}>
+                {checkingOut ? "Loading..." : "Unlock Full Access"}
+              </Button>
+              <Button size="lg" variant="outline" onClick={handleSubmit} disabled={saving}>
+                {saving ? "Saving..." : "See My Preview Score"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (submitted) {
-    const score = questions.reduce((acc: number, q: typeof questions[0]) => {
+    const gradeable = questions.slice(0, effectiveTotal);
+    const score = gradeable.reduce((acc: number, q: typeof questions[0]) => {
       const selected = selectedAnswers[q.id];
       const correct = q.answers.find((a: any) => a.is_correct)?.id;
       return selected === correct ? acc + 1 : acc;
@@ -112,19 +185,28 @@ function QuizPage() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold">Quiz Complete</h1>
+          <h1 className="text-3xl font-bold">
+            {hasAccess ? "Quiz Complete" : "Preview Complete"}
+          </h1>
           <p className="mt-2 text-lg text-muted-foreground">
-            You scored {score} out of {questions.length}
+            You scored {score} out of {gradeable.length}
           </p>
+          {!hasAccess && (
+            <div className="mt-4">
+              <Button onClick={handleUnlock} disabled={checkingOut}>
+                {checkingOut ? "Loading..." : "Unlock Full Access"}
+              </Button>
+            </div>
+          )}
           <div className="mt-4">
             <Link to="/exams">
-              <Button>Back to Exams</Button>
+              <Button variant="outline">Back to Exams</Button>
             </Link>
           </div>
         </div>
 
         <div className="space-y-6">
-          {questions.map((q: typeof questions[0]) => {
+          {gradeable.map((q: typeof questions[0]) => {
             const selected = selectedAnswers[q.id];
             const correctAnswer = q.answers.find((a: any) => a.is_correct);
             const isCorrect = selected === correctAnswer?.id;
@@ -154,9 +236,7 @@ function QuizPage() {
                         >
                           {a.text}
                           {isCorrectAnswer && (
-                            <span className="ml-2 text-xs text-green-700">
-                              (Correct)
-                            </span>
+                            <span className="ml-2 text-xs text-green-700">(Correct)</span>
                           )}
                         </div>
                       );
@@ -180,7 +260,12 @@ function QuizPage() {
     <div className="mx-auto max-w-3xl px-4 py-12">
       <div className="mb-6 flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
-          Question {currentIndex + 1} of {questions.length}
+          Question {currentIndex + 1} of {effectiveTotal}
+          {!hasAccess && (
+            <span className="ml-2 text-xs uppercase tracking-wide text-primary">
+              · Free Preview
+            </span>
+          )}
         </span>
         <span className="text-sm font-medium">{exam.title}</span>
       </div>
@@ -214,15 +299,20 @@ function QuizPage() {
         <Button variant="outline" onClick={goPrev} disabled={currentIndex === 0}>
           Previous
         </Button>
-        {currentIndex === questions.length - 1 ? (
+        {currentIndex === effectiveTotal - 1 ? (
           <Button
             onClick={handleSubmit}
             disabled={!selectedAnswers[currentQuestion.id] || saving}
           >
-            {saving ? "Saving..." : "Submit Quiz"}
+            {saving ? "Saving..." : hasAccess ? "Submit Quiz" : "Finish Preview"}
           </Button>
         ) : (
-          <Button onClick={goNext}>Next</Button>
+          <Button
+            onClick={goNext}
+            disabled={!selectedAnswers[currentQuestion.id]}
+          >
+            Next
+          </Button>
         )}
       </div>
     </div>
