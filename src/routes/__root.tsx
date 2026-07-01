@@ -91,7 +91,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         rel: "stylesheet",
         href: appCss,
       },
-      { rel: "icon", href: "/favicon.ico", type: "image/x-icon" },
+      { rel: "icon", href: "/favicon.png", type: "image/png" },
     ],
   }),
   shellComponent: RootShell,
@@ -116,6 +116,7 @@ function RootShell({ children }: { children: ReactNode }) {
 
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
+import { Logo } from "@/components/brand/Logo";
 
 function Navbar() {
   const { user, loading } = useAuth();
@@ -125,29 +126,30 @@ function Navbar() {
   };
 
   return (
-    <header className="border-b bg-background">
-      <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-        <Link to="/" className="text-lg font-bold tracking-tight">
-          PassPal
+    <header className="border-b border-border bg-background">
+      <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
+        <Link to="/" className="flex items-center" aria-label="PassPal home">
+          <Logo variant="light" className="h-8 w-auto" />
         </Link>
-        <nav className="flex items-center gap-4">
+        <nav className="flex items-center gap-6">
           <Link
             to="/exams"
-            className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+            className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
+            activeProps={{ className: "text-primary" }}
           >
             Exams
           </Link>
           {loading ? null : user ? (
             <button
               onClick={handleSignOut}
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
             >
               Sign out
             </button>
           ) : (
             <Link
               to="/auth"
-              className="text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
+              className="rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-accent"
             >
               Sign in
             </Link>
@@ -163,13 +165,16 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="flex min-h-screen flex-col">
+      <div className="flex min-h-screen flex-col bg-background">
         <Navbar />
         <main className="flex-1">
           <Outlet />
         </main>
-        <footer className="border-t py-6 text-center text-sm text-muted-foreground">
-          <p>PassPal &copy; {new Date().getFullYear()}</p>
+        <footer className="border-t border-border bg-secondary py-8 text-center text-sm text-secondary-foreground/80">
+          <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 px-4">
+            <Logo variant="mark-white" className="h-8 w-auto" />
+            <p>PassPal &copy; {new Date().getFullYear()}</p>
+          </div>
         </footer>
       </div>
     </QueryClientProvider>
