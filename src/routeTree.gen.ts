@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExamsIndexRouteImport } from './routes/exams.index'
 import { Route as ExamsSlugRouteImport } from './routes/exams.$slug'
+import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
 import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
 
 const AuthRoute = AuthRouteImport.update({
@@ -35,6 +36,11 @@ const ExamsSlugRoute = ExamsSlugRouteImport.update({
   path: '/exams/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
+  id: '/checkout/success',
+  path: '/checkout/success',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExamsSlugTakeRoute = ExamsSlugTakeRouteImport.update({
   id: '/take',
   path: '/take',
@@ -44,6 +50,7 @@ const ExamsSlugTakeRoute = ExamsSlugTakeRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
   '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/exams/': typeof ExamsIndexRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
@@ -51,6 +58,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
   '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/exams': typeof ExamsIndexRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
@@ -59,19 +67,33 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/checkout/success': typeof CheckoutSuccessRoute
   '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/exams/': typeof ExamsIndexRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/auth' | '/exams/$slug' | '/exams/' | '/exams/$slug/take'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/checkout/success'
+    | '/exams/$slug'
+    | '/exams/'
+    | '/exams/$slug/take'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/auth' | '/exams/$slug' | '/exams' | '/exams/$slug/take'
+  to:
+    | '/'
+    | '/auth'
+    | '/checkout/success'
+    | '/exams/$slug'
+    | '/exams'
+    | '/exams/$slug/take'
   id:
     | '__root__'
     | '/'
     | '/auth'
+    | '/checkout/success'
     | '/exams/$slug'
     | '/exams/'
     | '/exams/$slug/take'
@@ -80,6 +102,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AuthRoute: typeof AuthRoute
+  CheckoutSuccessRoute: typeof CheckoutSuccessRoute
   ExamsSlugRoute: typeof ExamsSlugRouteWithChildren
   ExamsIndexRoute: typeof ExamsIndexRoute
 }
@@ -114,6 +137,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/checkout/success': {
+      id: '/checkout/success'
+      path: '/checkout/success'
+      fullPath: '/checkout/success'
+      preLoaderRoute: typeof CheckoutSuccessRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/exams/$slug/take': {
       id: '/exams/$slug/take'
       path: '/take'
@@ -139,6 +169,7 @@ const ExamsSlugRouteWithChildren = ExamsSlugRoute._addFileChildren(
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthRoute: AuthRoute,
+  CheckoutSuccessRoute: CheckoutSuccessRoute,
   ExamsSlugRoute: ExamsSlugRouteWithChildren,
   ExamsIndexRoute: ExamsIndexRoute,
 }
