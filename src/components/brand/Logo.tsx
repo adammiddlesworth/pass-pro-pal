@@ -1,5 +1,5 @@
-import logoLight from "@/assets/logo-full-light.png.asset.json";
-import logoDark from "@/assets/logo-full-dark.png.asset.json";
+import logoLight from "@/assets/logo-full-light-transparent.png.asset.json";
+import logoDark from "@/assets/logo-full-dark-transparent.png.asset.json";
 import logoGreen from "@/assets/logo-full-green.png.asset.json";
 import logoMarkWhite from "@/assets/logo-mark-white.png.asset.json";
 
