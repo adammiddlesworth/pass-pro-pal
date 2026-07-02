@@ -276,22 +276,38 @@ function QuizPage() {
           <p className="mb-6 text-lg font-medium">{currentQuestion.text}</p>
           <div className="space-y-3">
             {currentQuestion.answers.map((a: any) => {
-              const isSelected = selectedAnswers[currentQuestion.id] === a.id;
+              const selectedId = selectedAnswers[currentQuestion.id];
+              const answered = !!selectedId;
+              const isSelected = selectedId === a.id;
+              const correctId = currentQuestion.answers.find((x: any) => x.is_correct)?.id;
+              let stateClass = "border-muted hover:bg-primary hover:text-white hover:border-primary";
+              if (answered) {
+                if (a.is_correct) stateClass = "border-green-500 bg-green-50 text-green-900";
+                else if (isSelected) stateClass = "border-red-500 bg-red-50 text-red-900";
+                else stateClass = "border-muted opacity-70";
+              }
               return (
                 <button
                   key={a.id}
                   onClick={() => selectAnswer(a.id)}
-                  className={`w-full rounded-md border px-4 py-3 text-left text-sm transition-colors ${
-                    isSelected
-                      ? "border-primary bg-primary/5"
-                      : "border-muted hover:bg-accent"
-                  }`}
+                  disabled={answered}
+                  className={`w-full rounded-md border px-4 py-3 text-left text-sm transition-colors ${stateClass} ${answered ? "cursor-default" : ""}`}
                 >
-                  {a.text}
+                  <span className="flex items-center justify-between gap-2">
+                    <span>{a.text}</span>
+                    {answered && a.id === correctId && <span className="text-xs font-semibold text-green-700">Correct</span>}
+                    {answered && isSelected && !a.is_correct && <span className="text-xs font-semibold text-red-700">Your answer</span>}
+                  </span>
                 </button>
               );
             })}
           </div>
+          {selectedAnswers[currentQuestion.id] && currentQuestion.explanation && (
+            <div className="mt-5 rounded-md border border-primary/20 bg-primary/5 p-4 text-sm">
+              <p className="mb-1 font-semibold text-primary">Explanation</p>
+              <p className="text-foreground/80">{currentQuestion.explanation}</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 
