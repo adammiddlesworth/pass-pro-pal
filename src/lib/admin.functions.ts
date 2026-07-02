@@ -290,7 +290,7 @@ export const upsertQuestion = createServerFn({ method: "POST" })
     }
 
     const answerRows = data.choices.map((c, i) => ({
-      question_id: questionId,
+      question_id: questionId as string,
       text: c.text,
       is_correct: c.is_correct,
       order_index: i,
