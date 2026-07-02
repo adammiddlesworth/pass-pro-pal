@@ -26,6 +26,7 @@ export const REAL_ESTATE_TOPICS: Topic[] = [
   { slug: "environmental-laws", label: "Environmental Laws and Regulations" },
   { slug: "settlement-escrow-procedures", label: "Settlement and Escrow Procedures" },
   { slug: "deeds-title-transfer", label: "Deeds and Title Transfer" },
+  { slug: "mixed", label: "Mixed" },
   { slug: "final-exam-practice", label: "Final Exam Practice" },
 ];
 
@@ -47,6 +48,7 @@ export const LIFE_HEALTH_TOPICS: Topic[] = [
   { slug: "ethics-state-regulations-licensing", label: "Ethics, State Regulations, and Licensing Rules" },
   { slug: "underwriting-concepts", label: "Underwriting Concepts" },
   { slug: "aca-affordable-care-act", label: "ACA and Affordable Care Act" },
+  { slug: "mixed", label: "Mixed" },
   { slug: "final-exam-practice", label: "Final Exam Practice" },
 ];
 
