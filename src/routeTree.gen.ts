@@ -19,6 +19,7 @@ import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as PreviewExamSlugRouteImport } from './routes/preview.exam.$slug'
 import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
+import { Route as AuthenticatedAdminExamsRouteImport } from './routes/_authenticated/admin.exams'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
 const AuthRoute = AuthRouteImport.update({
@@ -70,6 +71,11 @@ const ExamsSlugTakeRoute = ExamsSlugTakeRouteImport.update({
   path: '/take',
   getParentRoute: () => ExamsSlugRoute,
 } as any)
+const AuthenticatedAdminExamsRoute = AuthenticatedAdminExamsRouteImport.update({
+  id: '/admin/exams',
+  path: '/admin/exams',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/review/$category': typeof ReviewCategoryRoute
   '/exams/': typeof ExamsIndexRoute
+  '/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/review/$category': typeof ReviewCategoryRoute
   '/exams': typeof ExamsIndexRoute
+  '/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/review/$category': typeof ReviewCategoryRoute
   '/exams/': typeof ExamsIndexRoute
+  '/_authenticated/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
@@ -125,6 +134,7 @@ export interface FileRouteTypes {
     | '/exams/$slug'
     | '/review/$category'
     | '/exams/'
+    | '/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
     | '/api/public/payments/webhook'
@@ -137,6 +147,7 @@ export interface FileRouteTypes {
     | '/exams/$slug'
     | '/review/$category'
     | '/exams'
+    | '/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
     | '/api/public/payments/webhook'
@@ -150,6 +161,7 @@ export interface FileRouteTypes {
     | '/exams/$slug'
     | '/review/$category'
     | '/exams/'
+    | '/_authenticated/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
     | '/api/public/payments/webhook'
@@ -239,6 +251,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamsSlugTakeRouteImport
       parentRoute: typeof ExamsSlugRoute
     }
+    '/_authenticated/admin/exams': {
+      id: '/_authenticated/admin/exams'
+      path: '/admin/exams'
+      fullPath: '/admin/exams'
+      preLoaderRoute: typeof AuthenticatedAdminExamsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/api/public/payments/webhook': {
       id: '/api/public/payments/webhook'
       path: '/api/public/payments/webhook'
@@ -251,10 +270,12 @@ declare module '@tanstack/react-router' {
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedAdminExamsRoute: typeof AuthenticatedAdminExamsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedAdminExamsRoute: AuthenticatedAdminExamsRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
