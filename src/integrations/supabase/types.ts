@@ -49,11 +49,38 @@ export type Database = {
           },
         ]
       }
+      exam_tags: {
+        Row: {
+          created_at: string
+          exam_id: string
+          tag: string
+        }
+        Insert: {
+          created_at?: string
+          exam_id: string
+          tag: string
+        }
+        Update: {
+          created_at?: string
+          exam_id?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "exam_tags_exam_id_fkey"
+            columns: ["exam_id"]
+            isOneToOne: false
+            referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exams: {
         Row: {
           category: Database["public"]["Enums"]["exam_category"]
           created_at: string
           description: string | null
+          exam_number: number | null
           id: string
           is_sample: boolean
           price_cents: number | null
@@ -63,11 +90,14 @@ export type Database = {
           status: Database["public"]["Enums"]["exam_status"]
           title: string
           updated_at: string
+          youtube_url: string | null
+          youtube_video_id: string | null
         }
         Insert: {
           category: Database["public"]["Enums"]["exam_category"]
           created_at?: string
           description?: string | null
+          exam_number?: number | null
           id?: string
           is_sample?: boolean
           price_cents?: number | null
@@ -77,11 +107,14 @@ export type Database = {
           status?: Database["public"]["Enums"]["exam_status"]
           title: string
           updated_at?: string
+          youtube_url?: string | null
+          youtube_video_id?: string | null
         }
         Update: {
           category?: Database["public"]["Enums"]["exam_category"]
           created_at?: string
           description?: string | null
+          exam_number?: number | null
           id?: string
           is_sample?: boolean
           price_cents?: number | null
@@ -91,6 +124,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["exam_status"]
           title?: string
           updated_at?: string
+          youtube_url?: string | null
+          youtube_video_id?: string | null
         }
         Relationships: []
       }
@@ -284,7 +319,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
     }
     Enums: {
       exam_category: "real_estate" | "life_health_insurance"
