@@ -246,9 +246,9 @@ function StatCard({
 
 function StreakCard() {
   const { data } = useQuery({ queryKey: ["streak"], queryFn: () => getStreak() });
-  const days = data?.last_7_days ?? Array(7).fill(false);
-  const labels = ["S", "M", "T", "W", "T", "F", "S"];
-  const today = new Date().getDay(); // 0..6
+  const days = data?.week_activity ?? Array(7).fill(false);
+  const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+  const today = new Date().getDay(); // 0 = Sunday
 
   return (
     <Card>
@@ -265,9 +265,8 @@ function StreakCard() {
             <div className="text-xs text-muted-foreground">days in a row</div>
           </div>
           <div className="flex flex-1 gap-1.5">
-            {days.map((active, i) => {
-              const isToday = i === 6;
-              const dayIdx = (today - (6 - i) + 7) % 7;
+            {days.map((active: boolean, i: number) => {
+              const isToday = i === today;
               return (
                 <div
                   key={i}
@@ -278,16 +277,17 @@ function StreakCard() {
                         ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
                         : "border-border bg-muted/40 text-muted-foreground"
                   }`}
-                  title={isToday ? "Today" : ""}
+                  title={isToday ? "Today" : labels[i]}
                 >
-                  {isToday ? "T" : active ? "✓" : labels[dayIdx]}
+                  {isToday ? "Today" : active ? "✓" : labels[i]}
                 </div>
               );
             })}
           </div>
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          Best streak: {data?.best_streak ?? 0} days · Complete an exam today to keep it going.
+          Best streak: {data?.best_streak ?? 0} days
+          {data?.streak_start_date ? ` · Started ${data.streak_start_date}` : ""}.
         </p>
       </CardContent>
     </Card>
