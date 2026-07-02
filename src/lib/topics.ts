@@ -26,6 +26,7 @@ export const REAL_ESTATE_TOPICS: Topic[] = [
   { slug: "environmental-laws", label: "Environmental Laws and Regulations" },
   { slug: "settlement-escrow-procedures", label: "Settlement and Escrow Procedures" },
   { slug: "deeds-title-transfer", label: "Deeds and Title Transfer" },
+  { slug: "mixed", label: "Mixed" },
   { slug: "final-exam-practice", label: "Final Exam Practice" },
 ];
 
