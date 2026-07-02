@@ -1,25 +1,29 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   getExamBySlug,
   getExamQuestions,
   getUserCategoryAccess,
-  createAttempt,
-  saveUserAnswer,
-  completeAttempt,
   CATEGORY_PRODUCT_IDS,
   FREEMIUM_PREVIEW_COUNT,
 } from "@/lib/exams.functions";
+import {
+  startOrResumeAttempt,
+  saveAnswer,
+  finalizeAttempt,
+  abandonAttempt,
+} from "@/lib/attempts.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Lock, Youtube, ChevronDown } from "lucide-react";
+import { Lock, Youtube, ChevronDown, RotateCcw } from "lucide-react";
 import { initializePaddle, getPaddleEnvironment } from "@/lib/paddle";
 import { resolvePaddlePrice } from "@/utils/payments.functions";
 import { youtubeEmbedUrl } from "@/lib/youtube";
+import { toast } from "sonner";
 
 
 export const Route = createFileRoute("/exams/$slug/take")({
@@ -43,10 +47,13 @@ function QuizPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
+  const [finalScore, setFinalScore] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
   const [videoOpen, setVideoOpen] = useState(true);
-
+  const [attemptId, setAttemptId] = useState<string | null>(null);
+  const [resumedBanner, setResumedBanner] = useState<string | null>(null);
+  const initRef = useRef(false);
 
   const { data: access } = useQuery({
     queryKey: ["category-access"],
@@ -61,9 +68,51 @@ function QuizPage() {
   const paywalled = !hasAccess && currentIndex >= previewLimit;
   const progress = ((Math.min(currentIndex, effectiveTotal) + (submitted ? 1 : 0)) / effectiveTotal) * 100;
 
-  const selectAnswer = (answerId: string) => {
+  // Start or resume an attempt for authenticated + full-access users.
+  useEffect(() => {
+    if (initRef.current) return;
+    if (!user || !hasAccess) return;
+    initRef.current = true;
+    (async () => {
+      try {
+        const state = await startOrResumeAttempt({
+          data: { examId: exam.id, total: questions.length },
+        });
+        setAttemptId(state.attemptId);
+        if (state.answers.length > 0) {
+          const hydrated: Record<string, string> = {};
+          for (const a of state.answers) hydrated[a.question_id] = a.answer_id;
+          setSelectedAnswers(hydrated);
+          // Jump to first unanswered question.
+          const firstUnanswered = questions.findIndex((q: any) => !hydrated[q.id]);
+          setCurrentIndex(firstUnanswered === -1 ? questions.length - 1 : firstUnanswered);
+          if (state.resumed) {
+            setResumedBanner(
+              `Resumed — ${state.answers.length} of ${questions.length} answered`
+            );
+          }
+        }
+      } catch (e) {
+        console.error("Failed to start/resume attempt", e);
+      }
+    })();
+  }, [user, hasAccess, exam.id, questions]);
+
+  const selectAnswer = async (answerId: string) => {
     if (submitted) return;
-    setSelectedAnswers((prev) => ({ ...prev, [currentQuestion.id]: answerId }));
+    const qId = currentQuestion.id;
+    // Optimistic UI.
+    setSelectedAnswers((prev) => ({ ...prev, [qId]: answerId }));
+    if (attemptId && hasAccess) {
+      try {
+        await saveAnswer({
+          data: { attemptId, questionId: qId, answerId },
+        });
+      } catch (e) {
+        console.error("Auto-save failed", e);
+        toast.error("Couldn't save your answer — check your connection.");
+      }
+    }
   };
 
   const goNext = () => {
@@ -71,6 +120,26 @@ function QuizPage() {
   };
   const goPrev = () => {
     if (currentIndex > 0) setCurrentIndex((i) => i - 1);
+  };
+
+  const handleStartOver = async () => {
+    if (!attemptId) return;
+    if (!confirm("Start over? Your saved progress on this attempt will be deleted.")) return;
+    try {
+      await abandonAttempt({ data: { attemptId } });
+    } catch (e) {
+      console.error(e);
+    }
+    setAttemptId(null);
+    setSelectedAnswers({});
+    setCurrentIndex(0);
+    setResumedBanner(null);
+    initRef.current = false;
+    // Trigger re-init.
+    setTimeout(() => {
+      initRef.current = false;
+    }, 0);
+    window.location.reload();
   };
 
   const handleUnlock = async () => {
@@ -101,49 +170,29 @@ function QuizPage() {
   };
 
   const handleSubmit = async () => {
-    setSubmitted(true);
-    if (!user) return;
-
     setSaving(true);
     try {
       const gradeable = questions.slice(0, effectiveTotal);
-      let correctCount = 0;
-      for (const q of gradeable) {
-        const selected = selectedAnswers[q.id];
-        const correct = q.answers.find((a: any) => a.is_correct)?.id;
-        if (selected === correct) correctCount++;
+      if (attemptId && hasAccess) {
+        const result = await finalizeAttempt({
+          data: { attemptId, total: gradeable.length },
+        });
+        setFinalScore(result.score);
+      } else {
+        // Freemium / unauth: compute locally without persisting.
+        const localScore = gradeable.reduce((acc: number, q: any) => {
+          const selected = selectedAnswers[q.id];
+          const correct = q.answers.find((a: any) => a.is_correct)?.id;
+          return selected === correct ? acc + 1 : acc;
+        }, 0);
+        setFinalScore(localScore);
       }
-
-      const attempt = await createAttempt({
-        data: { examId: exam.id, total: gradeable.length, attemptType: "exam" },
-      });
-
-      for (const q of gradeable) {
-        const selected = selectedAnswers[q.id];
-        const correctAnswer = q.answers.find((a: any) => a.is_correct);
-        if (selected) {
-          await saveUserAnswer({
-            data: {
-              attemptId: attempt.id,
-              questionId: q.id,
-              answerId: selected,
-              isCorrect: selected === correctAnswer?.id,
-            },
-          });
-        }
-      }
-
-      await completeAttempt({
-        data: {
-          attemptId: attempt.id,
-          score: correctCount,
-          total: gradeable.length,
-        },
-      });
     } catch (e) {
-      console.error("Failed to save attempt", e);
+      console.error("Failed to submit", e);
+      toast.error("Couldn't submit — try again.");
     } finally {
       setSaving(false);
+      setSubmitted(true);
     }
   };
 
@@ -180,7 +229,7 @@ function QuizPage() {
 
   if (submitted) {
     const gradeable = questions.slice(0, effectiveTotal);
-    const score = gradeable.reduce((acc: number, q: typeof questions[0]) => {
+    const score = finalScore ?? gradeable.reduce((acc: number, q: typeof questions[0]) => {
       const selected = selectedAnswers[q.id];
       const correct = q.answers.find((a: any) => a.is_correct)?.id;
       return selected === correct ? acc + 1 : acc;
@@ -273,7 +322,21 @@ function QuizPage() {
         </span>
         <span className="text-sm font-medium">{exam.title}</span>
       </div>
-      <Progress value={progress} className="mb-8" />
+      <Progress value={progress} className="mb-4" />
+
+      {resumedBanner && (
+        <div className="mb-6 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-sm">
+          <span className="text-foreground/90">{resumedBanner}</span>
+          <button
+            type="button"
+            onClick={handleStartOver}
+            className="inline-flex items-center gap-1 text-xs font-medium text-primary hover:underline"
+          >
+            <RotateCcw className="h-3 w-3" />
+            Start over
+          </button>
+        </div>
+      )}
 
       {exam.youtube_video_id && (
         <div className="mb-6 overflow-hidden rounded-lg border">
