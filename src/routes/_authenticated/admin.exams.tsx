@@ -17,6 +17,7 @@ import {
 } from "@/lib/admin.functions";
 import { parseQuestionBank, IMPORT_TEMPLATE_HEADER, type ParsedRow } from "@/lib/question-import";
 import { parseYouTubeId } from "@/lib/youtube";
+import { getTopicsForCategory } from "@/lib/topics";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
