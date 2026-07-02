@@ -377,7 +377,8 @@ export type StreakInfo = {
   current_streak: number;
   best_streak: number;
   last_active_date: string | null;
-  last_7_days: boolean[]; // oldest -> today
+  week_activity: boolean[]; // Sun..Sat
+  streak_start_date: string | null;
 };
 
 export const getStreak = createServerFn({ method: "GET" })
@@ -401,30 +402,43 @@ export const getStreak = createServerFn({ method: "GET" })
     const last = row?.last_active_date ?? null;
     if (last && last !== todayStr && last !== yesterdayStr) current = 0;
 
-    // Build 7-day dots based on completed attempts in the last 7 days.
-    const sevenAgo = new Date(today);
-    sevenAgo.setDate(sevenAgo.getDate() - 6);
+    // Calendar week: Sunday -> Saturday
+    const dayOfWeek = today.getDay(); // 0 = Sunday
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - dayOfWeek);
+    weekStart.setHours(0, 0, 0, 0);
+
     const { data: recent } = await supabase
       .from("user_attempts")
       .select("completed_at")
       .eq("user_id", userId)
-      .gte("completed_at", sevenAgo.toISOString())
+      .gte("completed_at", weekStart.toISOString())
       .not("completed_at", "is", null);
     const activeDays = new Set(
       ((recent || []) as any[]).map((r) => (r.completed_at as string).slice(0, 10))
     );
-    const days: boolean[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date(today);
-      d.setDate(d.getDate() - i);
-      days.push(activeDays.has(d.toISOString().slice(0, 10)));
+
+    const weekActivity: boolean[] = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(weekStart);
+      d.setDate(weekStart.getDate() + i);
+      weekActivity.push(activeDays.has(d.toISOString().slice(0, 10)));
+    }
+
+    // Streak start date
+    let streakStartDate: string | null = null;
+    if (current > 0 && last) {
+      const start = new Date(last);
+      start.setDate(start.getDate() - (current - 1));
+      streakStartDate = start.toISOString().slice(0, 10);
     }
 
     return {
       current_streak: current,
       best_streak: best,
       last_active_date: last,
-      last_7_days: days,
+      week_activity: weekActivity,
+      streak_start_date: streakStartDate,
     };
   });
 
