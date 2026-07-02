@@ -117,8 +117,10 @@ function RootShell({ children }: { children: ReactNode }) {
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/brand/Logo";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { checkIsAdmin } from "@/lib/admin.functions";
+import { getActiveTrack, setActiveTrack } from "@/lib/track.functions";
+
 
 function Navbar() {
   const { user, loading } = useAuth();
