@@ -152,13 +152,14 @@ function Navbar() {
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
         <Link to="/dashboard" className="flex items-center" aria-label="PassPal home">
-          <Logo variant="light" className="h-8 w-auto" />
+          <Logo variant="light" className="h-8 w-auto dark:hidden" />
+          <Logo variant="dark" className="hidden h-8 w-auto dark:block" />
         </Link>
         <nav className="flex items-center gap-6">
           {user && (
             <Link
               to="/dashboard"
-              className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
+              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
               activeProps={{ className: "text-primary" }}
             >
               Dashboard
@@ -167,7 +168,7 @@ function Navbar() {
           {adminCheck?.isAdmin && (
             <Link
               to="/admin/exams"
-              className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
+              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
               activeProps={{ className: "text-primary" }}
             >
               Admin
@@ -205,7 +206,7 @@ function Navbar() {
           {user && (
             <Link
               to="/exams"
-              className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
+              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
               activeProps={{ className: "text-primary" }}
             >
               Exams
@@ -215,7 +216,7 @@ function Navbar() {
           {loading ? null : user ? (
             <button
               onClick={handleSignOut}
-              className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
+              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
             >
               Sign out
             </button>
