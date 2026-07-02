@@ -211,6 +211,7 @@ function Navbar() {
               Exams
             </Link>
           )}
+          <ThemeToggle />
           {loading ? null : user ? (
             <button
               onClick={handleSignOut}
