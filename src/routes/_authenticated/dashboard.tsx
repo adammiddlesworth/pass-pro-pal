@@ -29,8 +29,8 @@ const CATEGORIES = [
 ] as const;
 
 const dashboardSearch = z.object({
-  cat: fallback(z.enum(["real_estate", "life_health_insurance"]).optional(), undefined),
-  q: fallback(z.string(), "").default(""),
+  cat: z.enum(["real_estate", "life_health_insurance"]).optional().catch(undefined),
+  q: z.string().catch("").default(""),
 });
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
