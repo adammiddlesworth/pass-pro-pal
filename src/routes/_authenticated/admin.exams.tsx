@@ -73,6 +73,7 @@ function AdminExamsPage() {
 
 function ExamsList() {
   const qc = useQueryClient();
+  const navigate = useNavigate({ from: "/admin/exams" });
   const { data, isLoading } = useQuery({
     queryKey: ["admin-exams"],
     queryFn: () => listAllExams(),
@@ -85,6 +86,16 @@ function ExamsList() {
       qc.invalidateQueries({ queryKey: ["admin-exams"] });
     },
     onError: (e: any) => toast.error(e.message ?? "Delete failed"),
+  });
+
+  const dup = useMutation({
+    mutationFn: (id: string) => duplicateExam({ data: { id } }),
+    onSuccess: (res: any) => {
+      toast.success("Exam duplicated");
+      qc.invalidateQueries({ queryKey: ["admin-exams"] });
+      navigate({ search: { edit: res.id, new: undefined } });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Duplicate failed"),
   });
 
   return (
