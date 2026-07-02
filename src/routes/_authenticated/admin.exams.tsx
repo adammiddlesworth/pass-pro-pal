@@ -263,10 +263,11 @@ function ExamEditor({ id }: { id: string | undefined }) {
 
   const save = useMutation({
     mutationFn: () => {
-      const tags = form.tagsInput
+      const extras = form.tagsInput
         .split(",")
         .map((t) => t.trim())
         .filter(Boolean);
+      const tags = Array.from(new Set([...form.topicSlugs, ...extras]));
 
       return saveExam({
         data: {
