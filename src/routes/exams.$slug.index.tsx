@@ -18,7 +18,7 @@ import { resolvePaddlePrice } from "@/utils/payments.functions";
 import { youtubeEmbedUrl } from "@/lib/youtube";
 
 
-export const Route = createFileRoute("/exams/$slug")({
+export const Route = createFileRoute("/exams/$slug/")({
   loader: async ({ params, context }) => {
     const exam = await context.queryClient.ensureQueryData({
       queryKey: ["exam", params.slug],

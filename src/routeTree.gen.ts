@@ -14,9 +14,9 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ExamsIndexRouteImport } from './routes/exams.index'
 import { Route as ReviewCategoryRouteImport } from './routes/review.$category'
-import { Route as ExamsSlugRouteImport } from './routes/exams.$slug'
 import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as ExamsSlugIndexRouteImport } from './routes/exams.$slug.index'
 import { Route as PreviewExamSlugRouteImport } from './routes/preview.exam.$slug'
 import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
 import { Route as AuthenticatedAdminExamsRouteImport } from './routes/_authenticated/admin.exams'
@@ -46,11 +46,6 @@ const ReviewCategoryRoute = ReviewCategoryRouteImport.update({
   path: '/review/$category',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ExamsSlugRoute = ExamsSlugRouteImport.update({
-  id: '/exams/$slug',
-  path: '/exams/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
   id: '/checkout/success',
   path: '/checkout/success',
@@ -61,15 +56,20 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const ExamsSlugIndexRoute = ExamsSlugIndexRouteImport.update({
+  id: '/exams/$slug/',
+  path: '/exams/$slug/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PreviewExamSlugRoute = PreviewExamSlugRouteImport.update({
   id: '/preview/exam/$slug',
   path: '/preview/exam/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExamsSlugTakeRoute = ExamsSlugTakeRouteImport.update({
-  id: '/take',
-  path: '/take',
-  getParentRoute: () => ExamsSlugRoute,
+  id: '/exams/$slug/take',
+  path: '/exams/$slug/take',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedAdminExamsRoute = AuthenticatedAdminExamsRouteImport.update({
   id: '/admin/exams',
@@ -88,12 +88,12 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/checkout/success': typeof CheckoutSuccessRoute
-  '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/review/$category': typeof ReviewCategoryRoute
   '/exams/': typeof ExamsIndexRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
+  '/exams/$slug/': typeof ExamsSlugIndexRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -101,12 +101,12 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/checkout/success': typeof CheckoutSuccessRoute
-  '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/review/$category': typeof ReviewCategoryRoute
   '/exams': typeof ExamsIndexRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
+  '/exams/$slug': typeof ExamsSlugIndexRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
@@ -116,12 +116,12 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/checkout/success': typeof CheckoutSuccessRoute
-  '/exams/$slug': typeof ExamsSlugRouteWithChildren
   '/review/$category': typeof ReviewCategoryRoute
   '/exams/': typeof ExamsIndexRoute
   '/_authenticated/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
+  '/exams/$slug/': typeof ExamsSlugIndexRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
@@ -131,12 +131,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/checkout/success'
-    | '/exams/$slug'
     | '/review/$category'
     | '/exams/'
     | '/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
+    | '/exams/$slug/'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -144,12 +144,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/dashboard'
     | '/checkout/success'
-    | '/exams/$slug'
     | '/review/$category'
     | '/exams'
     | '/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
+    | '/exams/$slug'
     | '/api/public/payments/webhook'
   id:
     | '__root__'
@@ -158,12 +158,12 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/dashboard'
     | '/checkout/success'
-    | '/exams/$slug'
     | '/review/$category'
     | '/exams/'
     | '/_authenticated/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
+    | '/exams/$slug/'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -172,10 +172,11 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   CheckoutSuccessRoute: typeof CheckoutSuccessRoute
-  ExamsSlugRoute: typeof ExamsSlugRouteWithChildren
   ReviewCategoryRoute: typeof ReviewCategoryRoute
   ExamsIndexRoute: typeof ExamsIndexRoute
+  ExamsSlugTakeRoute: typeof ExamsSlugTakeRoute
   PreviewExamSlugRoute: typeof PreviewExamSlugRoute
+  ExamsSlugIndexRoute: typeof ExamsSlugIndexRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
@@ -216,13 +217,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReviewCategoryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/exams/$slug': {
-      id: '/exams/$slug'
-      path: '/exams/$slug'
-      fullPath: '/exams/$slug'
-      preLoaderRoute: typeof ExamsSlugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/checkout/success': {
       id: '/checkout/success'
       path: '/checkout/success'
@@ -237,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/exams/$slug/': {
+      id: '/exams/$slug/'
+      path: '/exams/$slug'
+      fullPath: '/exams/$slug/'
+      preLoaderRoute: typeof ExamsSlugIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/preview/exam/$slug': {
       id: '/preview/exam/$slug'
       path: '/preview/exam/$slug'
@@ -246,10 +247,10 @@ declare module '@tanstack/react-router' {
     }
     '/exams/$slug/take': {
       id: '/exams/$slug/take'
-      path: '/take'
+      path: '/exams/$slug/take'
       fullPath: '/exams/$slug/take'
       preLoaderRoute: typeof ExamsSlugTakeRouteImport
-      parentRoute: typeof ExamsSlugRoute
+      parentRoute: typeof rootRouteImport
     }
     '/_authenticated/admin/exams': {
       id: '/_authenticated/admin/exams'
@@ -281,27 +282,16 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
 const AuthenticatedRouteRouteWithChildren =
   AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
 
-interface ExamsSlugRouteChildren {
-  ExamsSlugTakeRoute: typeof ExamsSlugTakeRoute
-}
-
-const ExamsSlugRouteChildren: ExamsSlugRouteChildren = {
-  ExamsSlugTakeRoute: ExamsSlugTakeRoute,
-}
-
-const ExamsSlugRouteWithChildren = ExamsSlugRoute._addFileChildren(
-  ExamsSlugRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   CheckoutSuccessRoute: CheckoutSuccessRoute,
-  ExamsSlugRoute: ExamsSlugRouteWithChildren,
   ReviewCategoryRoute: ReviewCategoryRoute,
   ExamsIndexRoute: ExamsIndexRoute,
+  ExamsSlugTakeRoute: ExamsSlugTakeRoute,
   PreviewExamSlugRoute: PreviewExamSlugRoute,
+  ExamsSlugIndexRoute: ExamsSlugIndexRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
