@@ -1,363 +1,423 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { zodValidator } from "@tanstack/zod-adapter";
-import { z } from "zod";
-import { Search, Sparkles, Youtube, Building2, HeartPulse, PlayCircle, BookOpen } from "lucide-react";
-import { searchExams, getRecentActivity, getTopicCounts } from "@/lib/dashboard.functions";
+import {
+  PlayCircle,
+  ClipboardCheck,
+  BarChart3,
+  Target,
+  Flame,
+  AlertTriangle,
+  RefreshCw,
+  ArrowRight,
+  TrendingUp,
+} from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { getActiveTrack } from "@/lib/track.functions";
 import { getUserCategoryAccess } from "@/lib/exams.functions";
-import { getTopicsForCategory, getTopicLabel } from "@/lib/topics";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  getDashboardStats,
+  getUpNext,
+  getStreak,
+  getRecentActivity,
+} from "@/lib/dashboard.functions";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { useState, useEffect, useMemo } from "react";
-
-const CATEGORIES = [
-  {
-    id: "real_estate",
-    label: "Real Estate",
-    blurb: "Practice exams for your real estate licensing test.",
-    icon: Building2,
-    accent: "from-primary/20 to-primary/5",
-  },
-  {
-    id: "life_health_insurance",
-    label: "Life & Health Insurance",
-    blurb: "Practice exams for your life & health insurance licensing test.",
-    icon: HeartPulse,
-    accent: "from-secondary/20 to-secondary/5",
-  },
-] as const;
-
-const dashboardSearch = z.object({
-  cat: z.enum(["real_estate", "life_health_insurance"]).optional().catch(undefined),
-  topic: z.string().optional().catch(undefined),
-  q: z.string().catch("").default(""),
-});
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
-  validateSearch: zodValidator(dashboardSearch),
   component: DashboardPage,
 });
 
+const CATEGORY_LABEL: Record<string, string> = {
+  real_estate: "Real Estate",
+  life_health_insurance: "Life & Health Insurance",
+};
+
+function greeting() {
+  const h = new Date().getHours();
+  if (h < 12) return "Good morning";
+  if (h < 18) return "Good afternoon";
+  return "Good evening";
+}
+
 function DashboardPage() {
-  const { cat, topic, q } = Route.useSearch();
-  const navigate = useNavigate({ from: "/dashboard" });
-  const [localQ, setLocalQ] = useState(q);
-
-  useEffect(() => {
-    const t = setTimeout(() => {
-      if (localQ !== q) {
-        navigate({ search: (prev: any) => ({ ...prev, q: localQ }) });
-      }
-    }, 250);
-    return () => clearTimeout(t);
-  }, [localQ, q, navigate]);
-
-  useEffect(() => {
-    setLocalQ(q);
-  }, [q]);
-
-  const { data: access } = useQuery({
-    queryKey: ["category-access"],
-    queryFn: () => getUserCategoryAccess(),
+  const { user } = useAuth();
+  const { data: trackInfo, isLoading: trackLoading } = useQuery({
+    queryKey: ["active-track"],
+    queryFn: () => getActiveTrack(),
   });
 
-  const { data: recent } = useQuery({
-    queryKey: ["recent-activity"],
-    queryFn: () => getRecentActivity(),
-  });
-
-  // View 1: no category picked → track chooser
-  if (!cat) {
-    return (
-      <div className="mx-auto max-w-5xl px-4 py-12">
-        <h1 className="text-3xl font-bold">Welcome back</h1>
-        <p className="mt-2 text-muted-foreground">Pick a track to start practicing.</p>
-
-        <div className="mt-8 grid gap-4 md:grid-cols-2">
-          {CATEGORIES.map((c) => {
-            const Icon = c.icon;
-            const unlocked = !!access?.[c.id];
-            return (
-              <Link
-                key={c.id}
-                to="/dashboard"
-                search={{ cat: c.id, q: "" }}
-                className={`group relative overflow-hidden rounded-lg border bg-gradient-to-br ${c.accent} p-6 transition-shadow hover:shadow-md`}
-              >
-                <div className="flex items-start justify-between">
-                  <Icon className="h-10 w-10 text-primary" />
-                  {unlocked && <Badge>Unlocked</Badge>}
-                </div>
-                <h2 className="mt-4 text-xl font-semibold">{c.label}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">{c.blurb}</p>
-                <div className="mt-4 text-sm font-medium text-primary">Browse exams &rarr;</div>
-              </Link>
-            );
-          })}
-        </div>
-
-        {recent && recent.length > 0 && (
-          <section className="mt-12">
-            <h2 className="mb-4 text-xl font-semibold">Recent activity</h2>
-            <RecentList recent={recent} />
-          </section>
-        )}
-      </div>
-    );
+  if (trackLoading) {
+    return <div className="mx-auto max-w-6xl px-4 py-12 text-sm text-muted-foreground">Loading…</div>;
+  }
+  if (!trackInfo?.track) {
+    return <Navigate to="/select-track" />;
   }
 
-  const categoryMeta = CATEGORIES.find((c) => c.id === cat)!;
-  const unlocked = !!access?.[cat];
-  const topics = getTopicsForCategory(cat);
-  const hasTopics = topics.length > 0;
+  const cat = trackInfo.track;
+  const displayName =
+    (user?.user_metadata as any)?.display_name ||
+    (user?.user_metadata as any)?.full_name ||
+    (user?.email?.split("@")[0] ?? "friend");
 
-  // View 2: category picked, has topics defined, no topic selected → topic grid
-  if (hasTopics && !topic) {
-    return (
-      <div className="mx-auto max-w-5xl px-4 py-12">
-        <div className="mb-2">
-          <Link to="/dashboard" search={{ cat: undefined, q: "" }} className="text-sm text-muted-foreground hover:text-foreground">
-            &larr; All tracks
-          </Link>
-        </div>
-        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-bold">{categoryMeta.label}</h1>
-            <p className="mt-1 text-sm text-muted-foreground">Choose a topic to see practice exams.</p>
-          </div>
-          {unlocked && (
-            <Link to="/review/$category" params={{ category: cat }}>
-              <Button variant="secondary">
-                <Sparkles className="mr-2 h-4 w-4" />
-                Review My Weak Spots
-              </Button>
-            </Link>
-          )}
-        </div>
-
-        <div className="relative mb-8">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={localQ}
-            onChange={(e) => setLocalQ(e.target.value)}
-            placeholder="Filter topics…"
-            className="pl-9"
-          />
-        </div>
-
-        <TopicGrid category={cat} q={q} />
-      </div>
-    );
-  }
-
-  // View 3: category (+ optional topic) → exam results
   return (
-    <div className="mx-auto max-w-5xl px-4 py-12">
-      <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
-        <Link to="/dashboard" search={{ cat: undefined, q: "" }} className="hover:text-foreground">
-          All tracks
-        </Link>
-        <span>/</span>
-        {hasTopics ? (
-          <>
-            <Link to="/dashboard" search={{ cat, q: "" }} className="hover:text-foreground">
-              {categoryMeta.label}
-            </Link>
-            {topic && (
+    <div className="mx-auto max-w-6xl px-4 py-10">
+      <div className="mb-6 flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            {greeting()}, <span className="font-medium text-foreground">{displayName}</span> 👋
+          </p>
+          <h1 className="text-3xl font-bold">Your dashboard</h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Track: <span className="font-medium text-foreground">{CATEGORY_LABEL[cat]}</span>
+            {!trackInfo.locked && (
               <>
-                <span>/</span>
-                <span className="text-foreground">{getTopicLabel(cat, topic) ?? topic}</span>
+                {" · "}
+                <Link to="/select-track" className="text-primary hover:underline">
+                  switch
+                </Link>
               </>
             )}
-          </>
-        ) : (
-          <span className="text-foreground">{categoryMeta.label}</span>
-        )}
-      </div>
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">
-            {topic ? getTopicLabel(cat, topic) ?? topic : categoryMeta.label}
-          </h1>
-          <p className="mt-1 text-sm text-muted-foreground">{categoryMeta.blurb}</p>
+          </p>
         </div>
-        {unlocked && (
-          <Link to="/review/$category" params={{ category: cat }}>
-            <Button variant="secondary">
-              <Sparkles className="mr-2 h-4 w-4" />
-              Review My Weak Spots
-            </Button>
-          </Link>
-        )}
       </div>
 
-      <div className="relative mb-8">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          value={localQ}
-          onChange={(e) => setLocalQ(e.target.value)}
-          placeholder={`Search exams by title or topic…`}
-          className="pl-9"
-        />
+      <UpNextCard category={cat} />
+      <StatsRow category={cat} />
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+        <StreakCard />
+        <WeaknessCard category={cat} unlocked={!!trackInfo.locked} />
       </div>
 
-      <ExamResults category={cat} q={q} topic={topic} unlocked={unlocked} />
+      <div className="mt-6">
+        <RecentCard category={cat} />
+      </div>
     </div>
   );
 }
 
-function TopicGrid({ category, q }: { category: string; q: string }) {
-  const topics = getTopicsForCategory(category);
-  const { data: counts } = useQuery({
-    queryKey: ["topic-counts", category],
-    queryFn: () => getTopicCounts({ data: { category } }),
-  });
-  const countMap = useMemo(() => {
-    const m = new Map<string, number>();
-    for (const c of counts ?? []) m.set(c.tag, c.count);
-    return m;
-  }, [counts]);
-
-  const filtered = q.trim()
-    ? topics.filter((t) => t.label.toLowerCase().includes(q.trim().toLowerCase()))
-    : topics;
-
-  if (filtered.length === 0) {
-    return (
-      <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-        No topics match “{q}”.
-      </div>
-    );
-  }
-
-  return (
-    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-      {filtered.map((t) => {
-        const count = countMap.get(t.slug) ?? 0;
-        return (
-          <Link
-            key={t.slug}
-            to="/dashboard"
-            search={{ cat: category as any, topic: t.slug, q: "" }}
-            className="group flex h-full flex-col justify-between rounded-lg border bg-card p-4 transition-colors hover:border-primary hover:bg-primary/5"
-          >
-            <div className="flex items-start gap-3">
-              <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
-              <span className="font-medium leading-snug">{t.label}</span>
-            </div>
-            <div className="mt-3 text-xs text-muted-foreground">
-              {count === 0 ? "Coming soon" : `${count} exam${count === 1 ? "" : "s"}`}
-            </div>
-          </Link>
-        );
-      })}
-    </div>
-  );
-}
-
-function ExamResults({
-  category,
-  q,
-  topic,
-  unlocked,
-}: {
-  category: string;
-  q: string;
-  topic: string | undefined;
-  unlocked: boolean;
-}) {
+function UpNextCard({ category }: { category: string }) {
   const { data, isLoading } = useQuery({
-    queryKey: ["search-exams", category, q, topic ?? ""],
-    queryFn: () => searchExams({ data: { category, q, topic } }),
+    queryKey: ["up-next", category],
+    queryFn: () => getUpNext({ data: { category } }),
   });
 
   if (isLoading) {
-    return <p className="text-sm text-muted-foreground">Loading exams…</p>;
+    return <Card className="mb-6 h-32 animate-pulse bg-muted/40" />;
   }
-  if (!data || data.length === 0) {
+  if (!data || data.kind === "none") {
     return (
-      <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-        {q ? <>No exams match “{q}”. Try a different keyword.</> : <>No exams here yet. Check back soon.</>}
-      </div>
+      <Card className="mb-6 border-primary/30 bg-primary/5">
+        <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Up next</p>
+            <p className="mt-1 text-lg font-semibold">No exams available yet</p>
+            <p className="text-sm text-muted-foreground">Check the exams library.</p>
+          </div>
+          <Link to="/exams" search={{ q: "" }}>
+            <Button>Browse exams</Button>
+          </Link>
+        </CardContent>
+      </Card>
     );
   }
 
+  const label =
+    data.kind === "resume" ? "Resume" : data.kind === "retake" ? "Retake" : "Start exam";
+
   return (
-    <div className="grid gap-4 md:grid-cols-2">
-      {data.map((exam) => (
-        <Card key={exam.id} className="flex flex-col">
-          <CardHeader>
-            <div className="flex items-start justify-between gap-2">
-              <CardTitle className="text-lg leading-tight">
-                {exam.exam_number ? `#${exam.exam_number} · ` : ""}
-                {exam.title}
-              </CardTitle>
-              {unlocked ? (
-                <Badge>Unlocked</Badge>
-              ) : (
-                <Badge variant="secondary">Free preview</Badge>
-              )}
-            </div>
-            {exam.tags.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-1">
-                {exam.tags.slice(0, 4).map((t) => (
-                  <Badge key={t} variant="outline" className="text-[10px] font-normal">
-                    {t}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </CardHeader>
-          <CardContent className="mt-auto space-y-3">
-            <p className="text-sm text-muted-foreground">
-              {exam.question_count} questions
-              {exam.youtube_video_id && (
-                <span className="ml-2 inline-flex items-center gap-1 text-primary">
-                  <Youtube className="h-3.5 w-3.5" /> Video
-                </span>
-              )}
+    <Card className="mb-6 border-primary/30 bg-primary/5">
+      <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
+        <div className="flex items-start gap-4">
+          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <ArrowRight className="h-6 w-6" />
+          </div>
+          <div>
+            <p className="text-xs font-semibold uppercase tracking-wider text-primary">Up next</p>
+            <p className="mt-1 text-lg font-semibold leading-tight">
+              {data.topic_label ? `${data.topic_label} — ` : ""}
+              {data.exam_number ? `Practice Exam ${data.exam_number}` : data.exam_title}
             </p>
-            <div className="flex flex-wrap gap-2">
-              <Link to="/exams/$slug" params={{ slug: exam.slug }}>
-                <Button size="sm">
-                  <PlayCircle className="mr-2 h-4 w-4" />
-                  {unlocked ? "Start" : "Free preview"}
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+            <p className="text-sm text-muted-foreground">
+              {data.question_count} questions · ~{data.estimated_minutes} min
+              {data.kind === "retake" && " · Lowest score — worth a retake"}
+            </p>
+          </div>
+        </div>
+        <Link to="/exams/$slug" params={{ slug: data.exam_slug }}>
+          <Button size="lg">
+            <PlayCircle className="mr-2 h-5 w-5" />
+            {label}
+          </Button>
+        </Link>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatsRow({ category }: { category: string }) {
+  const { data } = useQuery({
+    queryKey: ["dashboard-stats", category],
+    queryFn: () => getDashboardStats({ data: { category } }),
+  });
+  const stats = data ?? {
+    exams_taken: 0,
+    exams_taken_week: 0,
+    avg_score_pct: null,
+    avg_score_delta_pct: null,
+    questions_answered: 0,
+    questions_total: 0,
+  };
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-3">
+      <StatCard
+        icon={ClipboardCheck}
+        label="Exams taken"
+        value={String(stats.exams_taken)}
+        sub={
+          stats.exams_taken_week > 0
+            ? { text: `${stats.exams_taken_week} this week`, positive: true }
+            : { text: "None this week", positive: false }
+        }
+      />
+      <StatCard
+        icon={BarChart3}
+        label="Avg score"
+        value={stats.avg_score_pct !== null ? `${stats.avg_score_pct}%` : "—"}
+        sub={
+          stats.avg_score_delta_pct !== null
+            ? {
+                text: `${stats.avg_score_delta_pct >= 0 ? "Up" : "Down"} ${Math.abs(
+                  stats.avg_score_delta_pct
+                )}% this month`,
+                positive: stats.avg_score_delta_pct >= 0,
+              }
+            : null
+        }
+      />
+      <StatCard
+        icon={Target}
+        label="Questions answered"
+        value={String(stats.questions_answered)}
+        sub={{ text: `of ${stats.questions_total} total`, positive: null }}
+      />
     </div>
   );
 }
 
-function RecentList({ recent }: { recent: NonNullable<Awaited<ReturnType<typeof getRecentActivity>>> }) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  sub,
+}: {
+  icon: any;
+  label: string;
+  value: string;
+  sub: { text: string; positive: boolean | null } | null;
+}) {
   return (
-    <div className="space-y-2">
-      {recent.map((r) => {
-        const done = !!r.completed_at;
-        const scoreLine = done && r.score !== null ? `${r.score} / ${r.total}` : "In progress";
-        return (
-          <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3">
-            <div className="min-w-0">
-              <p className="truncate text-sm font-medium">{r.exam_title}</p>
-              <p className="text-xs text-muted-foreground">
-                {new Date(r.started_at).toLocaleString()} · {scoreLine}
-              </p>
+    <Card>
+      <CardContent className="p-5">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Icon className="h-4 w-4" />
+          {label}
+        </div>
+        <div className="mt-2 text-4xl font-bold tracking-tight">{value}</div>
+        {sub && (
+          <div
+            className={`mt-2 flex items-center gap-1 text-xs ${
+              sub.positive === true
+                ? "text-emerald-500"
+                : sub.positive === false
+                  ? "text-muted-foreground"
+                  : "text-muted-foreground"
+            }`}
+          >
+            {sub.positive === true && <TrendingUp className="h-3 w-3" />}
+            {sub.text}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function StreakCard() {
+  const { data } = useQuery({ queryKey: ["streak"], queryFn: () => getStreak() });
+  const days = data?.last_7_days ?? Array(7).fill(false);
+  const labels = ["S", "M", "T", "W", "T", "F", "S"];
+  const today = new Date().getDay(); // 0..6
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Flame className="h-5 w-5 text-orange-500" />
+          Daily streak
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-end gap-6">
+          <div>
+            <div className="text-4xl font-bold">{data?.current_streak ?? 0}</div>
+            <div className="text-xs text-muted-foreground">days in a row</div>
+          </div>
+          <div className="flex flex-1 gap-1.5">
+            {days.map((active, i) => {
+              const isToday = i === 6;
+              const dayIdx = (today - (6 - i) + 7) % 7;
+              return (
+                <div
+                  key={i}
+                  className={`flex h-10 flex-1 flex-col items-center justify-center rounded-md border text-xs font-medium ${
+                    isToday
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : active
+                        ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-500"
+                        : "border-border bg-muted/40 text-muted-foreground"
+                  }`}
+                  title={isToday ? "Today" : ""}
+                >
+                  {isToday ? "T" : active ? "✓" : labels[dayIdx]}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+        <p className="mt-4 text-xs text-muted-foreground">
+          Best streak: {data?.best_streak ?? 0} days · Complete an exam today to keep it going.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function WeaknessCard({ category, unlocked }: { category: string; unlocked: boolean }) {
+  const { data: stats } = useQuery({
+    queryKey: ["dashboard-stats", category],
+    queryFn: () => getDashboardStats({ data: { category } }),
+  });
+  const avg = stats?.avg_score_pct ?? null;
+  const pass = 70;
+  const needsWork = avg !== null && avg < pass;
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <AlertTriangle className="h-5 w-5 text-rose-500" />
+          Weakness exam
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        {!unlocked ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Unlock full access to auto-generate a review from questions you've missed.
+            </p>
+            <Link to="/exams" search={{ q: "" }}>
+              <Button variant="outline" size="sm">
+                Upgrade to unlock
+              </Button>
+            </Link>
+          </div>
+        ) : avg === null ? (
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground">
+              Complete a few exams and we'll surface the areas that need the most attention.
+            </p>
+            <Link to="/exams" search={{ q: "" }}>
+              <Button variant="outline" size="sm">
+                Start an exam
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <div>
+            <div className="flex items-baseline justify-between text-sm">
+              <span className="font-semibold">Your avg: {avg}%</span>
+              <span className="text-muted-foreground">Pass mark: {pass}%</span>
             </div>
-            {r.exam_slug ? (
-              <Link to="/exams/$slug" params={{ slug: r.exam_slug }}>
-                <Button size="sm" variant="outline">
-                  {done ? "Retake" : "Resume"}
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className={`h-full ${needsWork ? "bg-rose-500" : "bg-emerald-500"}`}
+                style={{ width: `${Math.min(100, avg)}%` }}
+              />
+            </div>
+            <p className="mt-3 text-xs text-muted-foreground">
+              {needsWork
+                ? "You're below the pass mark — retake weak questions to close the gap."
+                : "You're above the pass mark. A weakness review keeps you sharp."}
+            </p>
+            <div className="mt-4">
+              <Link to="/review/$category" params={{ category }}>
+                <Button variant="outline" size="sm" className="w-full">
+                  <RefreshCw className="mr-2 h-4 w-4" />
+                  Retake weakness exam
                 </Button>
               </Link>
-            ) : null}
+            </div>
           </div>
-        );
-      })}
-    </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+function RecentCard({ category }: { category: string }) {
+  const { data } = useQuery({
+    queryKey: ["recent-activity", category],
+    queryFn: () => getRecentActivity({ data: { category } }),
+  });
+  const recent = data ?? [];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base">Recent exams</CardTitle>
+      </CardHeader>
+      <CardContent>
+        {recent.length === 0 ? (
+          <p className="text-sm text-muted-foreground">Nothing yet — take an exam to see it here.</p>
+        ) : (
+          <ul className="divide-y divide-border">
+            {recent.map((r) => {
+              const pct = r.total > 0 && r.score !== null ? Math.round((r.score / r.total) * 100) : null;
+              const color =
+                pct === null
+                  ? "text-muted-foreground"
+                  : pct >= 80
+                    ? "text-emerald-500"
+                    : pct >= 65
+                      ? "text-amber-500"
+                      : "text-rose-500";
+              return (
+                <li key={r.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-medium">{r.exam_title}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {new Date(r.started_at).toLocaleDateString()}
+                      {r.completed_at ? "" : " · in progress"}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`text-sm font-semibold ${color}`}>{pct !== null ? `${pct}%` : "—"}</span>
+                    {r.exam_slug && (
+                      <Link to="/exams/$slug" params={{ slug: r.exam_slug }}>
+                        <Button size="sm" variant="ghost">
+                          {r.completed_at ? "Retake" : "Resume"}
+                        </Button>
+                      </Link>
+                    )}
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </CardContent>
+    </Card>
   );
 }

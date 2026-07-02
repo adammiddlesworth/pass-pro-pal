@@ -157,4 +157,34 @@ export const completeAttempt = createServerFn({ method: "POST" })
       })
       .eq("id", data.attemptId);
     if (error) throw error;
+
+    // Update daily streak (best-effort — never fail the submit on streak errors).
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+    try {
+      const { data: row } = await context.supabase
+        .from("user_streaks")
+        .select("current_streak, best_streak, last_active_date")
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      let current = 1;
+      let best = row?.best_streak ?? 0;
+      if (row) {
+        if (row.last_active_date === todayStr) current = row.current_streak;
+        else if (row.last_active_date === yesterdayStr) current = (row.current_streak ?? 0) + 1;
+        else current = 1;
+      }
+      if (current > best) best = current;
+      await context.supabase.from("user_streaks").upsert({
+        user_id: context.userId,
+        current_streak: current,
+        best_streak: best,
+        last_active_date: todayStr,
+      });
+    } catch (e) {
+      console.warn("streak update failed", e);
+    }
   });

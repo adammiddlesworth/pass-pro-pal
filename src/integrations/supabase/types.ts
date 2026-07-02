@@ -131,18 +131,21 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_track: string | null
           created_at: string
           display_name: string | null
           id: string
           updated_at: string
         }
         Insert: {
+          active_track?: string | null
           created_at?: string
           display_name?: string | null
           id: string
           updated_at?: string
         }
         Update: {
+          active_track?: string | null
           created_at?: string
           display_name?: string | null
           id?: string
@@ -331,6 +334,33 @@ export type Database = {
           created_at?: string
           id?: string
           role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_streaks: {
+        Row: {
+          best_streak: number
+          created_at: string
+          current_streak: number
+          last_active_date: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          best_streak?: number
+          created_at?: string
+          current_streak?: number
+          last_active_date?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          best_streak?: number
+          created_at?: string
+          current_streak?: number
+          last_active_date?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

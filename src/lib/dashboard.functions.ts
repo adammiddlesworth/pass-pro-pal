@@ -144,15 +144,20 @@ export type RecentAttempt = {
 
 export const getRecentActivity = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }): Promise<RecentAttempt[]> => {
-    const { data, error } = await context.supabase
+  .inputValidator((data: { category?: string } | undefined) => data ?? {})
+  .handler(async ({ data, context }): Promise<RecentAttempt[]> => {
+    let q = context.supabase
       .from("user_attempts")
-      .select("id, exam_id, attempt_type, started_at, completed_at, score, total, exams(slug, title)")
+      .select("id, exam_id, attempt_type, started_at, completed_at, score, total, exams!inner(slug, title, category)")
       .eq("user_id", context.userId)
       .order("started_at", { ascending: false })
-      .limit(5);
+      .limit(10);
+    if (data.category) {
+      q = q.eq("exams.category", data.category as any);
+    }
+    const { data: rows, error } = await q;
     if (error) throw error;
-    return (data || []).map((r: any) => ({
+    return (rows || []).slice(0, 5).map((r: any) => ({
       id: r.id,
       exam_id: r.exam_id,
       exam_slug: r.exams?.slug ?? null,
@@ -164,3 +169,302 @@ export const getRecentActivity = createServerFn({ method: "GET" })
       total: r.total,
     }));
   });
+
+// ---------- Stats / Up Next / Streak ----------
+
+import { getTopicsForCategory } from "./topics";
+
+export type DashboardStats = {
+  exams_taken: number;
+  exams_taken_week: number;
+  avg_score_pct: number | null;
+  avg_score_delta_pct: number | null;
+  questions_answered: number;
+  questions_total: number;
+};
+
+export const getDashboardStats = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { category: string }) => data)
+  .handler(async ({ data, context }): Promise<DashboardStats> => {
+    const { supabase, userId } = context;
+    const category = data.category;
+
+    const { data: attempts } = await supabase
+      .from("user_attempts")
+      .select("id, score, total, completed_at, exams!inner(category)")
+      .eq("user_id", userId)
+      .eq("exams.category", category as any)
+      .not("completed_at", "is", null);
+
+    const now = Date.now();
+    const weekAgo = now - 7 * 24 * 60 * 60 * 1000;
+    const monthAgo = now - 30 * 24 * 60 * 60 * 1000;
+    const twoMonthsAgo = now - 60 * 24 * 60 * 60 * 1000;
+
+    let taken = 0;
+    let takenWeek = 0;
+    let sumPctRecent = 0;
+    let countRecent = 0;
+    let sumPctPrior = 0;
+    let countPrior = 0;
+
+    for (const a of (attempts || []) as any[]) {
+      taken += 1;
+      const t = a.completed_at ? new Date(a.completed_at).getTime() : 0;
+      if (t >= weekAgo) takenWeek += 1;
+      if (a.total > 0 && a.score !== null) {
+        const pct = (a.score / a.total) * 100;
+        if (t >= monthAgo) {
+          sumPctRecent += pct;
+          countRecent += 1;
+        } else if (t >= twoMonthsAgo) {
+          sumPctPrior += pct;
+          countPrior += 1;
+        }
+      }
+    }
+
+    const avgRecent = countRecent > 0 ? sumPctRecent / countRecent : null;
+    const avgPrior = countPrior > 0 ? sumPctPrior / countPrior : null;
+    const avgOverall =
+      taken > 0
+        ? ((attempts || []) as any[])
+            .filter((a) => a.total > 0 && a.score !== null)
+            .reduce((acc, a) => acc + (a.score / a.total) * 100, 0) /
+          Math.max(1, ((attempts || []) as any[]).filter((a) => a.total > 0 && a.score !== null).length)
+        : null;
+
+    // questions answered
+    const { data: examsInCat } = await supabase
+      .from("exams")
+      .select("id, question_count")
+      .eq("status", "published")
+      .eq("category", category as any);
+    const examIds = (examsInCat || []).map((e: any) => e.id);
+    const questionsTotal = (examsInCat || []).reduce((s: number, e: any) => s + (e.question_count || 0), 0);
+
+    let questionsAnswered = 0;
+    if (examIds.length > 0) {
+      const { count } = await supabase
+        .from("user_answers")
+        .select("id, user_attempts!inner(user_id, exam_id)", { count: "exact", head: true })
+        .eq("user_attempts.user_id", userId)
+        .in("user_attempts.exam_id", examIds);
+      questionsAnswered = count ?? 0;
+    }
+
+    return {
+      exams_taken: taken,
+      exams_taken_week: takenWeek,
+      avg_score_pct: avgOverall !== null ? Math.round(avgOverall) : null,
+      avg_score_delta_pct:
+        avgRecent !== null && avgPrior !== null ? Math.round(avgRecent - avgPrior) : null,
+      questions_answered: questionsAnswered,
+      questions_total: questionsTotal,
+    };
+  });
+
+export type UpNext =
+  | {
+      kind: "start" | "resume" | "retake";
+      exam_slug: string;
+      exam_title: string;
+      exam_number: number | null;
+      question_count: number;
+      topic_label: string | null;
+      estimated_minutes: number;
+    }
+  | { kind: "none" };
+
+export const getUpNext = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { category: string }) => data)
+  .handler(async ({ data, context }): Promise<UpNext> => {
+    const { supabase, userId } = context;
+    const category = data.category;
+    const topics = getTopicsForCategory(category);
+    if (topics.length === 0) return { kind: "none" };
+
+    // Load all published exams for the category with tags in one shot.
+    const { data: exams } = await supabase
+      .from("exams")
+      .select("id, slug, title, question_count, exam_number, exam_tags(tag)")
+      .eq("status", "published")
+      .eq("category", category as any)
+      .order("exam_number", { ascending: true, nullsFirst: false })
+      .order("created_at", { ascending: true });
+
+    if (!exams || exams.length === 0) return { kind: "none" };
+
+    // Attempts for this user in this category.
+    const { data: attempts } = await supabase
+      .from("user_attempts")
+      .select("exam_id, completed_at, score, total, exams!inner(category)")
+      .eq("user_id", userId)
+      .eq("exams.category", category as any);
+
+    const completedIds = new Set<string>();
+    const inProgressIds = new Set<string>();
+    const scoreByExam = new Map<string, { score: number; total: number }>();
+    for (const a of (attempts || []) as any[]) {
+      if (a.completed_at) {
+        completedIds.add(a.exam_id);
+        if (a.total > 0 && a.score !== null) {
+          const prev = scoreByExam.get(a.exam_id);
+          if (!prev || a.score / a.total < prev.score / prev.total) {
+            scoreByExam.set(a.exam_id, { score: a.score, total: a.total });
+          }
+        }
+      } else {
+        inProgressIds.add(a.exam_id);
+      }
+    }
+
+    // Bucket exams by topic slug.
+    const byTopic = new Map<string, any[]>();
+    const untagged: any[] = [];
+    for (const e of exams as any[]) {
+      const tags: string[] = (e.exam_tags || []).map((t: any) => t.tag);
+      if (tags.length === 0) untagged.push(e);
+      for (const tag of tags) {
+        const arr = byTopic.get(tag) ?? [];
+        arr.push(e);
+        byTopic.set(tag, arr);
+      }
+    }
+
+    const toResult = (e: any, kind: "start" | "resume" | "retake", topicLabel: string | null): UpNext => ({
+      kind,
+      exam_slug: e.slug,
+      exam_title: e.title,
+      exam_number: e.exam_number,
+      question_count: e.question_count,
+      topic_label: topicLabel,
+      estimated_minutes: Math.max(1, Math.round((e.question_count * 45) / 60)),
+    });
+
+    // Walk topics in order, then untagged.
+    const order: Array<{ label: string | null; exams: any[] }> = [
+      ...topics.map((t) => ({ label: t.label, exams: byTopic.get(t.slug) ?? [] })),
+      { label: null, exams: untagged },
+    ];
+
+    for (const bucket of order) {
+      for (const e of bucket.exams) {
+        if (inProgressIds.has(e.id)) return toResult(e, "resume", bucket.label);
+        if (!completedIds.has(e.id)) return toResult(e, "start", bucket.label);
+      }
+    }
+
+    // Everything done — suggest lowest-scoring exam.
+    let worst: any = null;
+    let worstPct = 2;
+    for (const e of exams as any[]) {
+      const s = scoreByExam.get(e.id);
+      if (!s) continue;
+      const pct = s.score / s.total;
+      if (pct < worstPct) {
+        worstPct = pct;
+        worst = e;
+      }
+    }
+    if (worst) return toResult(worst, "retake", null);
+    return { kind: "none" };
+  });
+
+export type StreakInfo = {
+  current_streak: number;
+  best_streak: number;
+  last_active_date: string | null;
+  last_7_days: boolean[]; // oldest -> today
+};
+
+export const getStreak = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<StreakInfo> => {
+    const { supabase, userId } = context;
+    const { data: row } = await supabase
+      .from("user_streaks")
+      .select("current_streak, best_streak, last_active_date")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+    let current = row?.current_streak ?? 0;
+    const best = row?.best_streak ?? 0;
+    const last = row?.last_active_date ?? null;
+    if (last && last !== todayStr && last !== yesterdayStr) current = 0;
+
+    // Build 7-day dots based on completed attempts in the last 7 days.
+    const sevenAgo = new Date(today);
+    sevenAgo.setDate(sevenAgo.getDate() - 6);
+    const { data: recent } = await supabase
+      .from("user_attempts")
+      .select("completed_at")
+      .eq("user_id", userId)
+      .gte("completed_at", sevenAgo.toISOString())
+      .not("completed_at", "is", null);
+    const activeDays = new Set(
+      ((recent || []) as any[]).map((r) => (r.completed_at as string).slice(0, 10))
+    );
+    const days: boolean[] = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      days.push(activeDays.has(d.toISOString().slice(0, 10)));
+    }
+
+    return {
+      current_streak: current,
+      best_streak: best,
+      last_active_date: last,
+      last_7_days: days,
+    };
+  });
+
+export const touchStreak = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context;
+    const today = new Date();
+    const todayStr = today.toISOString().slice(0, 10);
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().slice(0, 10);
+
+    const { data: row } = await supabase
+      .from("user_streaks")
+      .select("current_streak, best_streak, last_active_date")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    let current = 1;
+    let best = row?.best_streak ?? 0;
+    if (row) {
+      if (row.last_active_date === todayStr) {
+        current = row.current_streak;
+      } else if (row.last_active_date === yesterdayStr) {
+        current = (row.current_streak ?? 0) + 1;
+      } else {
+        current = 1;
+      }
+    }
+    if (current > best) best = current;
+
+    await supabase
+      .from("user_streaks")
+      .upsert({
+        user_id: userId,
+        current_streak: current,
+        best_streak: best,
+        last_active_date: todayStr,
+      });
+    return { current_streak: current, best_streak: best };
+  });
+

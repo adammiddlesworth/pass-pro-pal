@@ -157,13 +157,15 @@ function Navbar() {
               Admin
             </Link>
           )}
-          <Link
-            to="/exams"
-            className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
-            activeProps={{ className: "text-primary" }}
-          >
-            Exams
-          </Link>
+          {user && (
+            <Link
+              to="/exams"
+              className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
+              activeProps={{ className: "text-primary" }}
+            >
+              Exams
+            </Link>
+          )}
           {loading ? null : user ? (
             <button
               onClick={handleSignOut}
