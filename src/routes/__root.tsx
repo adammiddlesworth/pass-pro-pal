@@ -135,7 +135,7 @@ function Navbar() {
   return (
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
-        <Link to="/" className="flex items-center" aria-label="PassPal home">
+        <Link to="/dashboard" className="flex items-center" aria-label="PassPal home">
           <Logo variant="light" className="h-8 w-auto" />
         </Link>
         <nav className="flex items-center gap-6">
