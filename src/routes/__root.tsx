@@ -158,7 +158,7 @@ function Navbar() {
           {user && (
             <Link
               to="/dashboard"
-              className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
+              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
               activeProps={{ className: "text-primary" }}
             >
               Dashboard
@@ -167,7 +167,7 @@ function Navbar() {
           {adminCheck?.isAdmin && (
             <Link
               to="/admin/exams"
-              className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
+              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
               activeProps={{ className: "text-primary" }}
             >
               Admin
@@ -205,7 +205,7 @@ function Navbar() {
           {user && (
             <Link
               to="/exams"
-              className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
+              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
               activeProps={{ className: "text-primary" }}
             >
               Exams
@@ -215,7 +215,7 @@ function Navbar() {
           {loading ? null : user ? (
             <button
               onClick={handleSignOut}
-              className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
+              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
             >
               Sign out
             </button>
