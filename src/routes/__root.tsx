@@ -117,8 +117,10 @@ function RootShell({ children }: { children: ReactNode }) {
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/brand/Logo";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { checkIsAdmin } from "@/lib/admin.functions";
+import { getActiveTrack, setActiveTrack } from "@/lib/track.functions";
+
 
 function Navbar() {
   const { user, loading } = useAuth();
@@ -127,10 +129,22 @@ function Navbar() {
     queryFn: () => checkIsAdmin(),
     enabled: !!user,
   });
+  const queryClient = useQueryClient();
+  const { data: activeTrack } = useQuery({
+    queryKey: ["active-track"],
+    queryFn: () => getActiveTrack(),
+    enabled: !!user && !!adminCheck?.isAdmin,
+  });
+  const switchTrack = useMutation({
+    mutationFn: (track: "real_estate" | "life_health_insurance") =>
+      setActiveTrack({ data: { track } }),
+    onSuccess: () => queryClient.invalidateQueries(),
+  });
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
+
 
   return (
     <header className="border-b border-border bg-background">
@@ -157,6 +171,35 @@ function Navbar() {
               Admin
             </Link>
           )}
+          {adminCheck?.isAdmin && (
+            <div className="flex items-center gap-1 rounded-md border border-border bg-muted/40 p-0.5">
+              <button
+                onClick={() => switchTrack.mutate("real_estate")}
+                disabled={switchTrack.isPending}
+                className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
+                  activeTrack?.track === "real_estate"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-secondary/70 hover:text-primary"
+                }`}
+                title="Switch to Real Estate (admin)"
+              >
+                RE
+              </button>
+              <button
+                onClick={() => switchTrack.mutate("life_health_insurance")}
+                disabled={switchTrack.isPending}
+                className={`rounded px-2 py-1 text-xs font-semibold transition-colors ${
+                  activeTrack?.track === "life_health_insurance"
+                    ? "bg-primary text-primary-foreground"
+                    : "text-secondary/70 hover:text-primary"
+                }`}
+                title="Switch to Life & Health Insurance (admin)"
+              >
+                L&H
+              </button>
+            </div>
+          )}
+
           {user && (
             <Link
               to="/exams"

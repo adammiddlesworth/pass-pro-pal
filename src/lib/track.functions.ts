@@ -15,6 +15,23 @@ export const getActiveTrack = createServerFn({ method: "GET" })
   .handler(async ({ context }): Promise<ActiveTrackResult> => {
     const { supabase, userId } = context;
 
+    // Admins can freely switch tracks regardless of purchases.
+    const { data: isAdmin } = await supabase.rpc("has_role", {
+      _user_id: userId,
+      _role: "admin",
+    });
+
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("active_track")
+      .eq("id", userId)
+      .maybeSingle();
+    const storedTrack = (profile?.active_track as TrackId | null) ?? null;
+
+    if (isAdmin) {
+      return { track: storedTrack, locked: false };
+    }
+
     const { data: purchases } = await supabase
       .from("purchases")
       .select("product_id")
@@ -32,15 +49,9 @@ export const getActiveTrack = createServerFn({ method: "GET" })
       return { track: owned[0], locked: true };
     }
 
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("active_track")
-      .eq("id", userId)
-      .maybeSingle();
-
-    const track = (profile?.active_track as TrackId | null) ?? null;
-    return { track, locked: false };
+    return { track: storedTrack, locked: false };
   });
+
 
 export const setActiveTrack = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
