@@ -439,6 +439,380 @@ function ExamEditor({ id }: { id: string | undefined }) {
           </form>
         </CardContent>
       </Card>
+
+      {id && <QuestionsSection examId={id} />}
+    </div>
+  );
+}
+
+// ---------- Questions section (importer + editor) ----------
+
+function QuestionsSection({ examId }: { examId: string }) {
+  return (
+    <div className="mt-8 space-y-6">
+      <QuestionImporter examId={examId} />
+      <QuestionList examId={examId} />
+    </div>
+  );
+}
+
+function QuestionImporter({ examId }: { examId: string }) {
+  const qc = useQueryClient();
+  const [text, setText] = useState("");
+  const [mode, setMode] = useState<"append" | "replace">("append");
+
+  const parsed = useMemo(() => (text.trim() ? parseQuestionBank(text) : null), [text]);
+
+  const importMut = useMutation({
+    mutationFn: (rows: ParsedRow[]) =>
+      importExamQuestions({
+        data: {
+          examId,
+          mode,
+          rows: rows.map((r) => ({
+            prompt: r.prompt,
+            explanation: r.explanation,
+            choices: r.choices,
+          })),
+        },
+      }),
+    onSuccess: (res: any) => {
+      toast.success(`Imported ${res.inserted} questions`);
+      setText("");
+      qc.invalidateQueries({ queryKey: ["admin-questions", examId] });
+      qc.invalidateQueries({ queryKey: ["admin-exams"] });
+    },
+    onError: (e: any) => toast.error(e.message ?? "Import failed"),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-lg">Import Questions</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="text-sm text-muted-foreground">
+          Paste rows from Google Sheets, Excel, or Claude. Header row required.
+          Columns: <code>question, choice_a, choice_b, choice_c, choice_d, correct, explanation</code>{" "}
+          (correct = A/B/C/D). Supports up to 6 choices; blank choice cells are skipped.
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              navigator.clipboard.writeText(IMPORT_TEMPLATE_HEADER);
+              toast.success("Header copied — paste into Sheets/Excel");
+            }}
+          >
+            Copy header template
+          </Button>
+        </div>
+        <Textarea
+          rows={8}
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder={`question\tchoice_a\tchoice_b\tchoice_c\tchoice_d\tcorrect\texplanation\nWhat is a fee simple estate?\tHighest form of ownership\tLease for years\tLife estate\tEasement\tA\tFee simple = complete ownership.`}
+          className="font-mono text-xs"
+        />
+        {parsed && (
+          <div className="rounded-md border p-3 text-sm">
+            <div className="mb-2 flex items-center gap-3">
+              <Badge variant={parsed.errors.length ? "destructive" : "default"}>
+                {parsed.rows.length} valid
+              </Badge>
+              {parsed.errors.length > 0 && (
+                <Badge variant="destructive">{parsed.errors.length} errors</Badge>
+              )}
+            </div>
+            {parsed.errors.length > 0 && (
+              <ul className="mb-3 space-y-1 text-xs text-destructive">
+                {parsed.errors.slice(0, 8).map((e, i) => (
+                  <li key={i}>Row {e.row}: {e.message}</li>
+                ))}
+                {parsed.errors.length > 8 && <li>…and {parsed.errors.length - 8} more</li>}
+              </ul>
+            )}
+            {parsed.rows.length > 0 && (
+              <div className="max-h-48 overflow-auto text-xs">
+                {parsed.rows.slice(0, 5).map((r) => (
+                  <div key={r.rowNumber} className="mb-2 border-b pb-2 last:border-0">
+                    <div className="font-medium">{r.prompt}</div>
+                    <div className="mt-1 text-muted-foreground">
+                      {r.choices.map((c, i) => (
+                        <span key={i} className={c.is_correct ? "text-primary font-medium" : ""}>
+                          {String.fromCharCode(65 + i)}. {c.text}
+                          {i < r.choices.length - 1 ? " · " : ""}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ))}
+                {parsed.rows.length > 5 && (
+                  <div className="text-muted-foreground">+ {parsed.rows.length - 5} more</div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <RadioGroup
+            value={mode}
+            onValueChange={(v) => setMode(v as "append" | "replace")}
+            className="flex gap-4"
+          >
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="append" id="mode-append" />
+              <Label htmlFor="mode-append" className="cursor-pointer">Append</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <RadioGroupItem value="replace" id="mode-replace" />
+              <Label htmlFor="mode-replace" className="cursor-pointer">Replace all</Label>
+            </div>
+          </RadioGroup>
+          <Button
+            type="button"
+            disabled={!parsed || parsed.rows.length === 0 || importMut.isPending}
+            onClick={() => {
+              if (!parsed) return;
+              if (mode === "replace" && !confirm("Replace ALL existing questions for this exam?")) return;
+              importMut.mutate(parsed.rows);
+            }}
+          >
+            {importMut.isPending ? "Importing…" : `Import ${parsed?.rows.length ?? 0} questions`}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+type EditableQuestion = {
+  id?: string;
+  prompt: string;
+  explanation: string;
+  choices: { text: string; is_correct: boolean }[];
+};
+
+function QuestionList({ examId }: { examId: string }) {
+  const qc = useQueryClient();
+  const { data, isLoading } = useQuery({
+    queryKey: ["admin-questions", examId],
+    queryFn: () => listExamQuestions({ data: { examId } }),
+  });
+
+  const [editing, setEditing] = useState<EditableQuestion | null>(null);
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["admin-questions", examId] });
+    qc.invalidateQueries({ queryKey: ["admin-exams"] });
+  };
+
+  const save = useMutation({
+    mutationFn: (q: EditableQuestion) =>
+      upsertQuestion({
+        data: {
+          id: q.id,
+          examId,
+          prompt: q.prompt,
+          explanation: q.explanation || null,
+          choices: q.choices.filter((c) => c.text.trim()),
+        },
+      }),
+    onSuccess: () => {
+      toast.success("Saved");
+      setEditing(null);
+      invalidate();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Save failed"),
+  });
+
+  const del = useMutation({
+    mutationFn: (id: string) => deleteQuestion({ data: { id } }),
+    onSuccess: () => {
+      toast.success("Deleted");
+      invalidate();
+    },
+    onError: (e: any) => toast.error(e.message ?? "Delete failed"),
+  });
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0">
+        <CardTitle className="text-lg">
+          Questions {data ? `(${data.length})` : ""}
+        </CardTitle>
+        <Button
+          size="sm"
+          type="button"
+          onClick={() =>
+            setEditing({
+              prompt: "",
+              explanation: "",
+              choices: [
+                { text: "", is_correct: true },
+                { text: "", is_correct: false },
+                { text: "", is_correct: false },
+                { text: "", is_correct: false },
+              ],
+            })
+          }
+        >
+          <Plus className="mr-2 h-4 w-4" /> Add question
+        </Button>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {isLoading && <p className="text-sm text-muted-foreground">Loading…</p>}
+        {editing && (
+          <QuestionEditor
+            initial={editing}
+            onCancel={() => setEditing(null)}
+            onSave={(q) => save.mutate(q)}
+            saving={save.isPending}
+          />
+        )}
+        {data && data.length === 0 && !editing && (
+          <p className="text-sm text-muted-foreground">
+            No questions yet. Use the importer above or click "Add question".
+          </p>
+        )}
+        {data?.map((q, i) => (
+          <div key={q.id} className="rounded-md border p-3">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">
+                  {i + 1}. {q.text}
+                </p>
+                <ul className="mt-2 space-y-0.5 text-xs">
+                  {q.answers.map((a, j) => (
+                    <li key={a.id} className={a.is_correct ? "text-primary font-medium" : "text-muted-foreground"}>
+                      {String.fromCharCode(65 + j)}. {a.text} {a.is_correct && "✓"}
+                    </li>
+                  ))}
+                </ul>
+                {q.explanation && (
+                  <p className="mt-2 text-xs italic text-muted-foreground">{q.explanation}</p>
+                )}
+              </div>
+              <div className="flex flex-col gap-1">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() =>
+                    setEditing({
+                      id: q.id,
+                      prompt: q.text,
+                      explanation: q.explanation ?? "",
+                      choices: q.answers.map((a) => ({ text: a.text, is_correct: a.is_correct })),
+                    })
+                  }
+                >
+                  <Pencil className="h-3 w-3" />
+                </Button>
+                <Button
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => {
+                    if (confirm("Delete this question?")) del.mutate(q.id);
+                  }}
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          </div>
+        ))}
+      </CardContent>
+    </Card>
+  );
+}
+
+function QuestionEditor({
+  initial,
+  onCancel,
+  onSave,
+  saving,
+}: {
+  initial: EditableQuestion;
+  onCancel: () => void;
+  onSave: (q: EditableQuestion) => void;
+  saving: boolean;
+}) {
+  const [q, setQ] = useState<EditableQuestion>(initial);
+
+  const setChoice = (i: number, patch: Partial<{ text: string; is_correct: boolean }>) => {
+    setQ({
+      ...q,
+      choices: q.choices.map((c, idx) => (idx === i ? { ...c, ...patch } : c)),
+    });
+  };
+
+  return (
+    <div className="rounded-md border-2 border-primary/50 bg-muted/30 p-3 space-y-3">
+      <div>
+        <Label>Question</Label>
+        <Textarea
+          rows={2}
+          value={q.prompt}
+          onChange={(e) => setQ({ ...q, prompt: e.target.value })}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label>Choices (check the correct one)</Label>
+        {q.choices.map((c, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <Checkbox
+              checked={c.is_correct}
+              onCheckedChange={(v) => setChoice(i, { is_correct: !!v })}
+            />
+            <span className="text-xs font-mono w-4">{String.fromCharCode(65 + i)}</span>
+            <Input
+              value={c.text}
+              onChange={(e) => setChoice(i, { text: e.target.value })}
+              placeholder={`Choice ${String.fromCharCode(65 + i)}`}
+            />
+            {q.choices.length > 2 && (
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                onClick={() =>
+                  setQ({ ...q, choices: q.choices.filter((_, idx) => idx !== i) })
+                }
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        ))}
+        {q.choices.length < 6 && (
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={() =>
+              setQ({ ...q, choices: [...q.choices, { text: "", is_correct: false }] })
+            }
+          >
+            <Plus className="mr-1 h-3 w-3" /> Add choice
+          </Button>
+        )}
+      </div>
+      <div>
+        <Label>Explanation (optional)</Label>
+        <Textarea
+          rows={2}
+          value={q.explanation}
+          onChange={(e) => setQ({ ...q, explanation: e.target.value })}
+        />
+      </div>
+      <div className="flex justify-end gap-2">
+        <Button type="button" variant="outline" onClick={onCancel}>Cancel</Button>
+        <Button type="button" onClick={() => onSave(q)} disabled={saving}>
+          {saving ? "Saving…" : "Save question"}
+        </Button>
+      </div>
     </div>
   );
 }
