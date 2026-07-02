@@ -1,58 +1,38 @@
-## Why /admin/exams feels broken
+## Auto-save & Resume Exams
 
-The page loads and lets you create/edit exam **metadata** (title, slug, YouTube link, tags), but there is **no UI for questions and answers**. Every exam you create there ends up with 0 questions, so nothing shows in the app. That's the "not working" — it's a missing feature, not a broken route.
+Persist each answer as users tap it, and let them resume an incomplete attempt where they left off.
 
-## What I'll add
+### Data model
+Reuse existing tables — no schema changes required:
+- `user_attempts` already has `started_at`, `completed_at`, `score`. Treat rows with `completed_at IS NULL` as "in progress".
+- `user_answers` (attempt_id, question_id, answer_id, is_correct) stores per-question responses.
 
-### 1. Paste-to-import (primary workflow)
-On any exam's edit page, a new "Import Questions" panel with:
-- A large textarea that accepts **TSV pasted straight from Google Sheets / Excel / Claude**, or CSV.
-- Expected columns (header row required, order flexible):
-  `question, choice_a, choice_b, choice_c, choice_d, correct, explanation`
-  - `correct` = `A` / `B` / `C` / `D` (case-insensitive)
-  - `explanation` optional
-  - Supports 2-6 choices (blank choice columns are skipped)
-- Live preview table showing parsed rows + row-level validation errors before import.
-- "Replace all questions" vs "Append" toggle.
-- One-click import — writes questions + answers in a single server call.
+Add one migration:
+- Unique index on `user_answers (attempt_id, question_id)` so upserts replace prior selections cleanly.
+- Optional: index on `user_attempts (user_id, exam_id) WHERE completed_at IS NULL` for fast "resume" lookup.
 
-I'll also include a **"Copy template"** button that puts the header row on your clipboard so you can paste it into Sheets/Claude and fill it in.
+### Server functions (`src/lib/attempts.functions.ts`)
+All `requireSupabaseAuth`, all verify the attempt belongs to `userId`:
+- `startOrResumeAttempt({ examId })` — returns an in-progress attempt if one exists, else inserts a new one. Returns `{ attemptId, answers: [{question_id, answer_id}] }`.
+- `saveAnswer({ attemptId, questionId, answerId })` — upsert into `user_answers`, compute `is_correct` server-side by looking up the answer.
+- `finalizeAttempt({ attemptId })` — set `completed_at`, compute `score` from stored answers, return summary.
+- `abandonAttempt({ attemptId })` — optional, for "start over" button.
 
-### 2. Per-question manual editor (for tweaks)
-Below the importer, a list of the exam's existing questions with:
-- Inline edit of question text, choices, correct answer, explanation.
-- Add / delete individual questions.
-- Reorder via up/down buttons.
+### Quiz UI changes (`src/routes/exams.$slug.take.tsx`)
+- On mount (paid/authenticated flow only), call `startOrResumeAttempt` and hydrate:
+  - selected answers map
+  - jump `currentIndex` to first unanswered question
+- On answer select, fire `saveAnswer` (fire-and-forget with a small toast on failure). Keep existing immediate correct/incorrect feedback — the server already returns `is_correct`.
+- Submit button calls `finalizeAttempt` instead of doing the batch insert currently used.
+- If a resumed attempt exists, show a small banner: "Resumed from {date} — {n}/{total} answered" with an "Start over" link that calls `abandonAttempt` then reloads.
 
-### 3. Small quality-of-life fixes on the exams list
-- Show question count with a warning badge when it's 0 (so empty exams are obvious).
-- "Duplicate exam" button (clones metadata + questions) — handy for making variant #38 from #37.
+### Dashboard integration
+- `getUpNext` in `src/lib/dashboard.functions.ts`: prefer any in-progress attempt over the "recent activity" heuristic. Show a "Resume" badge on the Up Next card.
 
-## Technical details
+### Scope guards
+- Owner preview route (`/preview/exam/$slug`) and freemium 10-question preview are **not** auto-saved — they don't create `user_attempts` today and stay that way.
+- No UI changes to the admin editor or dashboard layout beyond the "Resume" badge.
 
-**New server functions** in `src/lib/admin.functions.ts` (all `requireSupabaseAuth` + `assertAdmin`):
-- `listExamQuestions({ examId })` — returns questions + answers ordered by `position`.
-- `importExamQuestions({ examId, mode: "replace" | "append", rows: ParsedRow[] })` — bulk insert; on `replace` deletes existing questions first (cascade removes answers).
-- `upsertQuestion({ examId, id?, prompt, explanation, choices: [{ text, is_correct }] })` — single question CRUD.
-- `deleteQuestion({ id })`.
-- `reorderQuestions({ examId, orderedIds })`.
-- `duplicateExam({ id })` — copies exam row + tags + questions + answers under a new slug.
-
-**Parser** in a new `src/lib/question-import.ts` (pure, unit-testable):
-- Auto-detects delimiter (tab vs comma) from the first line.
-- Handles quoted fields with embedded commas/newlines.
-- Normalizes headers (lowercase, strip spaces/underscores) so `Choice A` / `choice_a` / `A` all map to the same column.
-- Returns `{ rows: ParsedRow[], errors: { row: number, message: string }[] }`.
-
-**UI** — extend `src/routes/_authenticated/admin.exams.tsx` (or split into `admin.exams.$id.tsx` if the file gets long) with:
-- `<QuestionImporter examId=... />` — textarea + parse preview + import button.
-- `<QuestionList examId=... />` — inline editable rows using existing shadcn `Input` / `Textarea` / `Button`.
-
-**No schema changes** — existing `questions` (with `position`) and `answers` tables already support everything above.
-
-## Out of scope for this pass
-- CSV file upload (paste covers 95% of the flow; can add later).
-- Image attachments on questions.
-- AI-assisted question generation.
-
-Want me to also add a "Preview exam" link from the editor so you can jump straight into the quiz UI as the owner after importing? (Uses the existing `/preview/exam/$slug?token=...` route.)
+### Files touched
+- New: `supabase/migrations/<ts>_user_answers_unique.sql`, `src/lib/attempts.functions.ts`
+- Edit: `src/routes/exams.$slug.take.tsx`, `src/lib/dashboard.functions.ts`
