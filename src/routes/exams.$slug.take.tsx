@@ -16,9 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Lock } from "lucide-react";
+import { Lock, Youtube, ChevronDown } from "lucide-react";
 import { initializePaddle, getPaddleEnvironment } from "@/lib/paddle";
 import { resolvePaddlePrice } from "@/utils/payments.functions";
+import { youtubeEmbedUrl } from "@/lib/youtube";
+
 
 export const Route = createFileRoute("/exams/$slug/take")({
   loader: async ({ params, context }) => {
