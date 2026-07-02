@@ -117,9 +117,16 @@ function RootShell({ children }: { children: ReactNode }) {
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 import { Logo } from "@/components/brand/Logo";
+import { useQuery } from "@tanstack/react-query";
+import { checkIsAdmin } from "@/lib/admin.functions";
 
 function Navbar() {
   const { user, loading } = useAuth();
+  const { data: adminCheck } = useQuery({
+    queryKey: ["is-admin"],
+    queryFn: () => checkIsAdmin(),
+    enabled: !!user,
+  });
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
@@ -139,6 +146,15 @@ function Navbar() {
               activeProps={{ className: "text-primary" }}
             >
               Dashboard
+            </Link>
+          )}
+          {adminCheck?.isAdmin && (
+            <Link
+              to="/admin/exams"
+              className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
+              activeProps={{ className: "text-primary" }}
+            >
+              Admin
             </Link>
           )}
           <Link
