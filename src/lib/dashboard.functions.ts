@@ -25,13 +25,24 @@ export type ExamSearchResult = {
 };
 
 export const searchExams = createServerFn({ method: "GET" })
-  .inputValidator((data: { category: string; q?: string; limit?: number }) => data)
+  .inputValidator((data: { category: string; q?: string; topic?: string; limit?: number }) => data)
   .handler(async ({ data }): Promise<ExamSearchResult[]> => {
     const supabase = getPublicClient();
     const limit = Math.min(data.limit ?? 30, 60);
     const q = (data.q ?? "").trim();
+    const topic = (data.topic ?? "").trim();
 
-    // Base: published exams in the chosen category.
+    let topicExamIds: string[] | null = null;
+    if (topic) {
+      const { data: tagRows, error: tagErr } = await supabase
+        .from("exam_tags")
+        .select("exam_id")
+        .eq("tag", topic);
+      if (tagErr) throw tagErr;
+      topicExamIds = (tagRows || []).map((r: any) => r.exam_id);
+      if (topicExamIds.length === 0) return [];
+    }
+
     let query = supabase
       .from("exams")
       .select(
@@ -43,8 +54,11 @@ export const searchExams = createServerFn({ method: "GET" })
       .order("created_at", { ascending: true })
       .limit(limit);
 
+    if (topicExamIds) {
+      query = query.in("id", topicExamIds);
+    }
+
     if (q) {
-      // Match title OR description; tag match handled client-side below via union.
       query = query.or(
         `title.ilike.%${q}%,description.ilike.%${q}%,slug.ilike.%${q}%`
       );
@@ -65,8 +79,7 @@ export const searchExams = createServerFn({ method: "GET" })
       tags: (r.exam_tags || []).map((t: any) => t.tag),
     }));
 
-    // Additionally union in exams that match by tag when a query is present.
-    if (q) {
+    if (q && !topic) {
       const { data: tagged, error: tagErr } = await supabase
         .from("exam_tags")
         .select("exam_id, exams!inner(id, slug, title, description, category, question_count, exam_number, youtube_video_id, status)")
@@ -96,6 +109,25 @@ export const searchExams = createServerFn({ method: "GET" })
     }
 
     return results;
+  });
+
+export type TopicCount = { tag: string; count: number };
+
+export const getTopicCounts = createServerFn({ method: "GET" })
+  .inputValidator((data: { category: string }) => data)
+  .handler(async ({ data }): Promise<TopicCount[]> => {
+    const supabase = getPublicClient();
+    const { data: rows, error } = await supabase
+      .from("exam_tags")
+      .select("tag, exams!inner(status, category)")
+      .eq("exams.status", "published")
+      .eq("exams.category", data.category as any);
+    if (error) throw error;
+    const counts = new Map<string, number>();
+    for (const r of (rows || []) as any[]) {
+      counts.set(r.tag, (counts.get(r.tag) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).map(([tag, count]) => ({ tag, count }));
   });
 
 export type RecentAttempt = {
