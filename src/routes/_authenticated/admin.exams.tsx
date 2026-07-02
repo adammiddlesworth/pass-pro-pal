@@ -204,6 +204,7 @@ type FormState = {
   exam_number: string;
   youtube_url: string;
   youtube_video_id: string;
+  topicSlugs: string[];
   tagsInput: string;
 };
 
@@ -217,6 +218,7 @@ const emptyForm: FormState = {
   exam_number: "",
   youtube_url: "",
   youtube_video_id: "",
+  topicSlugs: [],
   tagsInput: "",
 };
 
