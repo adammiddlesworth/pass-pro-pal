@@ -2,14 +2,15 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { Search, Sparkles, Youtube, Building2, HeartPulse, PlayCircle } from "lucide-react";
-import { searchExams, getRecentActivity } from "@/lib/dashboard.functions";
+import { Search, Sparkles, Youtube, Building2, HeartPulse, PlayCircle, BookOpen } from "lucide-react";
+import { searchExams, getRecentActivity, getTopicCounts } from "@/lib/dashboard.functions";
 import { getUserCategoryAccess } from "@/lib/exams.functions";
+import { getTopicsForCategory, getTopicLabel } from "@/lib/topics";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { useMemo, useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 
 const CATEGORIES = [
   {
@@ -30,6 +31,7 @@ const CATEGORIES = [
 
 const dashboardSearch = z.object({
   cat: z.enum(["real_estate", "life_health_insurance"]).optional().catch(undefined),
+  topic: z.string().optional().catch(undefined),
   q: z.string().catch("").default(""),
 });
 
@@ -39,15 +41,14 @@ export const Route = createFileRoute("/_authenticated/dashboard")({
 });
 
 function DashboardPage() {
-  const { cat, q } = Route.useSearch();
+  const { cat, topic, q } = Route.useSearch();
   const navigate = useNavigate({ from: "/dashboard" });
   const [localQ, setLocalQ] = useState(q);
 
-  // Debounce query param updates.
   useEffect(() => {
     const t = setTimeout(() => {
       if (localQ !== q) {
-        navigate({ search: (prev: { cat?: string; q: string }) => ({ ...prev, q: localQ }) });
+        navigate({ search: (prev: any) => ({ ...prev, q: localQ }) });
       }
     }, 250);
     return () => clearTimeout(t);
@@ -67,6 +68,7 @@ function DashboardPage() {
     queryFn: () => getRecentActivity(),
   });
 
+  // View 1: no category picked → track chooser
   if (!cat) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-12">
@@ -90,9 +92,7 @@ function DashboardPage() {
                 </div>
                 <h2 className="mt-4 text-xl font-semibold">{c.label}</h2>
                 <p className="mt-1 text-sm text-muted-foreground">{c.blurb}</p>
-                <div className="mt-4 text-sm font-medium text-primary">
-                  Browse exams &rarr;
-                </div>
+                <div className="mt-4 text-sm font-medium text-primary">Browse exams &rarr;</div>
               </Link>
             );
           })}
@@ -110,21 +110,77 @@ function DashboardPage() {
 
   const categoryMeta = CATEGORIES.find((c) => c.id === cat)!;
   const unlocked = !!access?.[cat];
+  const topics = getTopicsForCategory(cat);
+  const hasTopics = topics.length > 0;
 
+  // View 2: category picked, has topics defined, no topic selected → topic grid
+  if (hasTopics && !topic) {
+    return (
+      <div className="mx-auto max-w-5xl px-4 py-12">
+        <div className="mb-2">
+          <Link to="/dashboard" search={{ cat: undefined, q: "" }} className="text-sm text-muted-foreground hover:text-foreground">
+            &larr; All tracks
+          </Link>
+        </div>
+        <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold">{categoryMeta.label}</h1>
+            <p className="mt-1 text-sm text-muted-foreground">Choose a topic to see practice exams.</p>
+          </div>
+          {unlocked && (
+            <Link to="/review/$category" params={{ category: cat }}>
+              <Button variant="secondary">
+                <Sparkles className="mr-2 h-4 w-4" />
+                Review My Weak Spots
+              </Button>
+            </Link>
+          )}
+        </div>
+
+        <div className="relative mb-8">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={localQ}
+            onChange={(e) => setLocalQ(e.target.value)}
+            placeholder="Filter topics…"
+            className="pl-9"
+          />
+        </div>
+
+        <TopicGrid category={cat} q={q} />
+      </div>
+    );
+  }
+
+  // View 3: category (+ optional topic) → exam results
   return (
     <div className="mx-auto max-w-5xl px-4 py-12">
-      <div className="mb-2">
-        <Link
-          to="/dashboard"
-          search={{ cat: undefined, q: "" }}
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          &larr; All tracks
+      <div className="mb-2 flex items-center gap-2 text-sm text-muted-foreground">
+        <Link to="/dashboard" search={{ cat: undefined, q: "" }} className="hover:text-foreground">
+          All tracks
         </Link>
+        <span>/</span>
+        {hasTopics ? (
+          <>
+            <Link to="/dashboard" search={{ cat, q: "" }} className="hover:text-foreground">
+              {categoryMeta.label}
+            </Link>
+            {topic && (
+              <>
+                <span>/</span>
+                <span className="text-foreground">{getTopicLabel(cat, topic) ?? topic}</span>
+              </>
+            )}
+          </>
+        ) : (
+          <span className="text-foreground">{categoryMeta.label}</span>
+        )}
       </div>
       <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold">{categoryMeta.label}</h1>
+          <h1 className="text-3xl font-bold">
+            {topic ? getTopicLabel(cat, topic) ?? topic : categoryMeta.label}
+          </h1>
           <p className="mt-1 text-sm text-muted-foreground">{categoryMeta.blurb}</p>
         </div>
         {unlocked && (
@@ -142,12 +198,61 @@ function DashboardPage() {
         <Input
           value={localQ}
           onChange={(e) => setLocalQ(e.target.value)}
-          placeholder={`Search ${categoryMeta.label} exams by title or topic…`}
+          placeholder={`Search exams by title or topic…`}
           className="pl-9"
         />
       </div>
 
-      <ExamResults category={cat} q={q} unlocked={unlocked} />
+      <ExamResults category={cat} q={q} topic={topic} unlocked={unlocked} />
+    </div>
+  );
+}
+
+function TopicGrid({ category, q }: { category: string; q: string }) {
+  const topics = getTopicsForCategory(category);
+  const { data: counts } = useQuery({
+    queryKey: ["topic-counts", category],
+    queryFn: () => getTopicCounts({ data: { category } }),
+  });
+  const countMap = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const c of counts ?? []) m.set(c.tag, c.count);
+    return m;
+  }, [counts]);
+
+  const filtered = q.trim()
+    ? topics.filter((t) => t.label.toLowerCase().includes(q.trim().toLowerCase()))
+    : topics;
+
+  if (filtered.length === 0) {
+    return (
+      <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
+        No topics match “{q}”.
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {filtered.map((t) => {
+        const count = countMap.get(t.slug) ?? 0;
+        return (
+          <Link
+            key={t.slug}
+            to="/dashboard"
+            search={{ cat: category as any, topic: t.slug, q: "" }}
+            className="group flex h-full flex-col justify-between rounded-lg border bg-card p-4 transition-colors hover:border-primary hover:bg-primary/5"
+          >
+            <div className="flex items-start gap-3">
+              <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-primary" />
+              <span className="font-medium leading-snug">{t.label}</span>
+            </div>
+            <div className="mt-3 text-xs text-muted-foreground">
+              {count === 0 ? "Coming soon" : `${count} exam${count === 1 ? "" : "s"}`}
+            </div>
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -155,15 +260,17 @@ function DashboardPage() {
 function ExamResults({
   category,
   q,
+  topic,
   unlocked,
 }: {
   category: string;
   q: string;
+  topic: string | undefined;
   unlocked: boolean;
 }) {
   const { data, isLoading } = useQuery({
-    queryKey: ["search-exams", category, q],
-    queryFn: () => searchExams({ data: { category, q } }),
+    queryKey: ["search-exams", category, q, topic ?? ""],
+    queryFn: () => searchExams({ data: { category, q, topic } }),
   });
 
   if (isLoading) {
@@ -172,7 +279,7 @@ function ExamResults({
   if (!data || data.length === 0) {
     return (
       <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-        No exams match “{q}”. Try a different keyword.
+        {q ? <>No exams match “{q}”. Try a different keyword.</> : <>No exams here yet. Check back soon.</>}
       </div>
     );
   }
@@ -234,10 +341,7 @@ function RecentList({ recent }: { recent: NonNullable<Awaited<ReturnType<typeof 
         const done = !!r.completed_at;
         const scoreLine = done && r.score !== null ? `${r.score} / ${r.total}` : "In progress";
         return (
-          <div
-            key={r.id}
-            className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3"
-          >
+          <div key={r.id} className="flex flex-wrap items-center justify-between gap-3 rounded-md border bg-card p-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-medium">{r.exam_title}</p>
               <p className="text-xs text-muted-foreground">
