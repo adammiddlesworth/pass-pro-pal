@@ -275,7 +275,7 @@ function ExamEditor({ id }: { id: string | undefined }) {
           title: form.title,
           slug: form.slug,
           category: form.category,
-          status: form.status,
+          status: form.status || "draft",
           description: form.description || null,
           is_sample: form.is_sample,
           exam_number: form.exam_number ? Number(form.exam_number) : null,

@@ -64,7 +64,7 @@ const examInputSchema = z.object({
     .max(120)
     .regex(/^[a-z0-9-]+$/, "Slug must be lowercase letters, numbers, and dashes"),
   category: z.enum(["real_estate", "life_health_insurance"]),
-  status: z.enum(["draft", "published", "archived"]),
+  status: z.enum(["draft", "published", "archived"]).default("draft"),
   description: z.string().max(2000).nullable().optional(),
   is_sample: z.boolean(),
   exam_number: z.number().int().nullable().optional(),
