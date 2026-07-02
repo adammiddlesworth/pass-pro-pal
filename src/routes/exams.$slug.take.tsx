@@ -313,7 +313,7 @@ function QuizPage() {
               const answered = !!selectedId;
               const isSelected = selectedId === a.id;
               const correctId = currentQuestion.answers.find((x: any) => x.is_correct)?.id;
-              let stateClass = "border-muted hover:bg-primary hover:text-white hover:border-primary";
+              let stateClass = "border-muted hover:border-green-500 hover:bg-green-500 hover:text-white";
               if (answered) {
                 if (a.is_correct) stateClass = "border-green-500 bg-green-50 text-green-900";
                 else if (isSelected) stateClass = "border-red-500 bg-red-50 text-red-900";
