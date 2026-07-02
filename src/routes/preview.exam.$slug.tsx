@@ -39,7 +39,9 @@ type PreviewQuestion = { id: string; text: string; explanation: string | null; a
 
 function PreviewQuiz() {
 
-  const { exam, questions } = Route.useLoaderData();
+  const { exam, questions: rawQuestions } = Route.useLoaderData();
+  const questions = rawQuestions as unknown as PreviewQuestion[];
+
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
   const [submitted, setSubmitted] = useState(false);
