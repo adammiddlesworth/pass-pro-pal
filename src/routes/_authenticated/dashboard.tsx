@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
 import { Search, Sparkles, Youtube, Building2, HeartPulse, PlayCircle } from "lucide-react";
 import { searchExams, getRecentActivity } from "@/lib/dashboard.functions";
