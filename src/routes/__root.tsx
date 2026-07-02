@@ -152,7 +152,8 @@ function Navbar() {
     <header className="border-b border-border bg-background">
       <div className="mx-auto flex h-16 max-w-5xl items-center justify-between px-4">
         <Link to="/dashboard" className="flex items-center" aria-label="PassPal home">
-          <Logo variant="light" className="h-8 w-auto" />
+          <Logo variant="light" className="h-8 w-auto dark:hidden" />
+          <Logo variant="dark" className="hidden h-8 w-auto dark:block" />
         </Link>
         <nav className="flex items-center gap-6">
           {user && (
