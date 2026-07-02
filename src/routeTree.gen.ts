@@ -14,7 +14,10 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReviewCategoryRouteImport } from './routes/review.$category'
 import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
+import { Route as AuthenticatedSelectTrackRouteImport } from './routes/_authenticated/select-track'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as ExamsSlugIndexRouteImport } from './routes/exams.$slug.index'
+import { Route as AuthenticatedExamsIndexRouteImport } from './routes/_authenticated/exams.index'
 import { Route as PreviewExamSlugRouteImport } from './routes/preview.exam.$slug'
 import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
 import { Route as AuthenticatedAdminExamsRouteImport } from './routes/_authenticated/admin.exams'
@@ -44,10 +47,26 @@ const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
   path: '/checkout/success',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedSelectTrackRoute =
+  AuthenticatedSelectTrackRouteImport.update({
+    id: '/select-track',
+    path: '/select-track',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ExamsSlugIndexRoute = ExamsSlugIndexRouteImport.update({
   id: '/exams/$slug/',
   path: '/exams/$slug/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedExamsIndexRoute = AuthenticatedExamsIndexRouteImport.update({
+  id: '/exams/',
+  path: '/exams/',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const PreviewExamSlugRoute = PreviewExamSlugRouteImport.update({
   id: '/preview/exam/$slug',
@@ -74,22 +93,28 @@ const ApiPublicPaymentsWebhookRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/select-track': typeof AuthenticatedSelectTrackRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/review/$category': typeof ReviewCategoryRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
+  '/exams/': typeof AuthenticatedExamsIndexRoute
   '/exams/$slug/': typeof ExamsSlugIndexRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/select-track': typeof AuthenticatedSelectTrackRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/review/$category': typeof ReviewCategoryRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
+  '/exams': typeof AuthenticatedExamsIndexRoute
   '/exams/$slug': typeof ExamsSlugIndexRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -98,11 +123,14 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/select-track': typeof AuthenticatedSelectTrackRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/review/$category': typeof ReviewCategoryRoute
   '/_authenticated/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
+  '/_authenticated/exams/': typeof AuthenticatedExamsIndexRoute
   '/exams/$slug/': typeof ExamsSlugIndexRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
@@ -111,22 +139,28 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/dashboard'
+    | '/select-track'
     | '/checkout/success'
     | '/review/$category'
     | '/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
+    | '/exams/'
     | '/exams/$slug/'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
+    | '/dashboard'
+    | '/select-track'
     | '/checkout/success'
     | '/review/$category'
     | '/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
+    | '/exams'
     | '/exams/$slug'
     | '/api/public/payments/webhook'
   id:
@@ -134,11 +168,14 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/select-track'
     | '/checkout/success'
     | '/review/$category'
     | '/_authenticated/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
+    | '/_authenticated/exams/'
     | '/exams/$slug/'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
@@ -192,12 +229,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutSuccessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/select-track': {
+      id: '/_authenticated/select-track'
+      path: '/select-track'
+      fullPath: '/select-track'
+      preLoaderRoute: typeof AuthenticatedSelectTrackRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/exams/$slug/': {
       id: '/exams/$slug/'
       path: '/exams/$slug'
       fullPath: '/exams/$slug/'
       preLoaderRoute: typeof ExamsSlugIndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated/exams/': {
+      id: '/_authenticated/exams/'
+      path: '/exams'
+      fullPath: '/exams/'
+      preLoaderRoute: typeof AuthenticatedExamsIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/preview/exam/$slug': {
       id: '/preview/exam/$slug'
@@ -231,11 +289,17 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedSelectTrackRoute: typeof AuthenticatedSelectTrackRoute
   AuthenticatedAdminExamsRoute: typeof AuthenticatedAdminExamsRoute
+  AuthenticatedExamsIndexRoute: typeof AuthenticatedExamsIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedSelectTrackRoute: AuthenticatedSelectTrackRoute,
   AuthenticatedAdminExamsRoute: AuthenticatedAdminExamsRoute,
+  AuthenticatedExamsIndexRoute: AuthenticatedExamsIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
