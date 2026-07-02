@@ -416,7 +416,47 @@ function ExamEditor({ id }: { id: string | undefined }) {
               </div>
 
               <div className="md:col-span-2">
-                <Label htmlFor="tags">Tags (comma-separated)</Label>
+                <Label>Sub-category (topics)</Label>
+                <p className="mb-2 mt-1 text-xs text-muted-foreground">
+                  Pick one or more topics so this exam shows up under those tiles on the {form.category === "real_estate" ? "Real Estate" : "Life & Health Insurance"} exams page.
+                </p>
+                <div className="grid max-h-64 gap-2 overflow-y-auto rounded-md border p-3 sm:grid-cols-2">
+                  {getTopicsForCategory(form.category).map((t) => {
+                    const checked = form.topicSlugs.includes(t.slug);
+                    return (
+                      <label
+                        key={t.slug}
+                        className="flex cursor-pointer items-start gap-2 text-sm"
+                      >
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={(v) =>
+                            setForm({
+                              ...form,
+                              topicSlugs: v
+                                ? [...form.topicSlugs, t.slug]
+                                : form.topicSlugs.filter((s) => s !== t.slug),
+                            })
+                          }
+                        />
+                        <span className="leading-tight">{t.label}</span>
+                      </label>
+                    );
+                  })}
+                </div>
+                {form.topicSlugs.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {form.topicSlugs.map((s) => (
+                      <Badge key={s} variant="secondary" className="text-[10px]">
+                        {s}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="md:col-span-2">
+                <Label htmlFor="tags">Extra tags (optional, comma-separated)</Label>
                 <Input
                   id="tags"
                   value={form.tagsInput}
