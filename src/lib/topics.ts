@@ -48,6 +48,7 @@ export const LIFE_HEALTH_TOPICS: Topic[] = [
   { slug: "ethics-state-regulations-licensing", label: "Ethics, State Regulations, and Licensing Rules" },
   { slug: "underwriting-concepts", label: "Underwriting Concepts" },
   { slug: "aca-affordable-care-act", label: "ACA and Affordable Care Act" },
+  { slug: "mixed", label: "Mixed" },
   { slug: "final-exam-practice", label: "Final Exam Practice" },
 ];
 
