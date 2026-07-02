@@ -47,7 +47,7 @@ function DashboardPage() {
   useEffect(() => {
     const t = setTimeout(() => {
       if (localQ !== q) {
-        navigate({ search: (prev) => ({ ...prev, q: localQ }) });
+        navigate({ search: (prev: { cat?: string; q: string }) => ({ ...prev, q: localQ }) });
       }
     }, 250);
     return () => clearTimeout(t);
