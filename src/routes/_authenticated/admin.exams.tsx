@@ -236,6 +236,10 @@ function ExamEditor({ id }: { id: string | undefined }) {
 
   useEffect(() => {
     if (existing) {
+      const existingTags: string[] = existing.tags ?? [];
+      const topicSlugSet = new Set(getTopicsForCategory(existing.category).map((t) => t.slug));
+      const topicSlugs = existingTags.filter((t) => topicSlugSet.has(t));
+      const extras = existingTags.filter((t) => !topicSlugSet.has(t));
       setForm({
         title: existing.title ?? "",
         slug: existing.slug ?? "",
@@ -246,7 +250,8 @@ function ExamEditor({ id }: { id: string | undefined }) {
         exam_number: existing.exam_number != null ? String(existing.exam_number) : "",
         youtube_url: existing.youtube_url ?? "",
         youtube_video_id: existing.youtube_video_id ?? "",
-        tagsInput: (existing.tags ?? []).join(", "),
+        topicSlugs,
+        tagsInput: extras.join(", "),
       });
     }
   }, [existing]);
