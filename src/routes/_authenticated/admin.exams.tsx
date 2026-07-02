@@ -9,7 +9,13 @@ import {
   getExamForEdit,
   saveExam,
   deleteExam,
+  listExamQuestions,
+  importExamQuestions,
+  upsertQuestion,
+  deleteQuestion,
+  duplicateExam,
 } from "@/lib/admin.functions";
+import { parseQuestionBank, IMPORT_TEMPLATE_HEADER, type ParsedRow } from "@/lib/question-import";
 import { parseYouTubeId } from "@/lib/youtube";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,8 +31,9 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { toast } from "sonner";
-import { Pencil, Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Pencil, Plus, Trash2, ArrowLeft, Copy, AlertTriangle } from "lucide-react";
 
 const searchSchema = z.object({
   edit: fallback(z.string().optional(), undefined),
