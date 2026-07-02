@@ -15,6 +15,7 @@ import { Route as ExamsIndexRouteImport } from './routes/exams.index'
 import { Route as ReviewCategoryRouteImport } from './routes/review.$category'
 import { Route as ExamsSlugRouteImport } from './routes/exams.$slug'
 import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
+import { Route as PreviewExamSlugRouteImport } from './routes/preview.exam.$slug'
 import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
@@ -48,6 +49,11 @@ const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
   path: '/checkout/success',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PreviewExamSlugRoute = PreviewExamSlugRouteImport.update({
+  id: '/preview/exam/$slug',
+  path: '/preview/exam/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ExamsSlugTakeRoute = ExamsSlugTakeRouteImport.update({
   id: '/take',
   path: '/take',
@@ -68,6 +74,7 @@ export interface FileRoutesByFullPath {
   '/review/$category': typeof ReviewCategoryRoute
   '/exams/': typeof ExamsIndexRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
+  '/preview/exam/$slug': typeof PreviewExamSlugRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesByTo {
@@ -78,6 +85,7 @@ export interface FileRoutesByTo {
   '/review/$category': typeof ReviewCategoryRoute
   '/exams': typeof ExamsIndexRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
+  '/preview/exam/$slug': typeof PreviewExamSlugRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRoutesById {
@@ -89,6 +97,7 @@ export interface FileRoutesById {
   '/review/$category': typeof ReviewCategoryRoute
   '/exams/': typeof ExamsIndexRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
+  '/preview/exam/$slug': typeof PreviewExamSlugRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
 }
 export interface FileRouteTypes {
@@ -101,6 +110,7 @@ export interface FileRouteTypes {
     | '/review/$category'
     | '/exams/'
     | '/exams/$slug/take'
+    | '/preview/exam/$slug'
     | '/api/public/payments/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -111,6 +121,7 @@ export interface FileRouteTypes {
     | '/review/$category'
     | '/exams'
     | '/exams/$slug/take'
+    | '/preview/exam/$slug'
     | '/api/public/payments/webhook'
   id:
     | '__root__'
@@ -121,6 +132,7 @@ export interface FileRouteTypes {
     | '/review/$category'
     | '/exams/'
     | '/exams/$slug/take'
+    | '/preview/exam/$slug'
     | '/api/public/payments/webhook'
   fileRoutesById: FileRoutesById
 }
@@ -131,6 +143,7 @@ export interface RootRouteChildren {
   ExamsSlugRoute: typeof ExamsSlugRouteWithChildren
   ReviewCategoryRoute: typeof ReviewCategoryRoute
   ExamsIndexRoute: typeof ExamsIndexRoute
+  PreviewExamSlugRoute: typeof PreviewExamSlugRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
@@ -178,6 +191,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CheckoutSuccessRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/preview/exam/$slug': {
+      id: '/preview/exam/$slug'
+      path: '/preview/exam/$slug'
+      fullPath: '/preview/exam/$slug'
+      preLoaderRoute: typeof PreviewExamSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/exams/$slug/take': {
       id: '/exams/$slug/take'
       path: '/take'
@@ -214,18 +234,9 @@ const rootRouteChildren: RootRouteChildren = {
   ExamsSlugRoute: ExamsSlugRouteWithChildren,
   ReviewCategoryRoute: ReviewCategoryRoute,
   ExamsIndexRoute: ExamsIndexRoute,
+  PreviewExamSlugRoute: PreviewExamSlugRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

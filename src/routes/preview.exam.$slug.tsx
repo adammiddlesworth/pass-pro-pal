@@ -34,7 +34,11 @@ export const Route = createFileRoute("/preview/exam/$slug")({
   component: PreviewQuiz,
 });
 
+type PreviewAnswer = { id: string; text: string; is_correct: boolean };
+type PreviewQuestion = { id: string; text: string; explanation: string | null; answers: PreviewAnswer[] };
+
 function PreviewQuiz() {
+
   const { exam, questions } = Route.useLoaderData();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
