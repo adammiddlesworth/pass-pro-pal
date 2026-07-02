@@ -136,7 +136,14 @@ function ExamsList() {
                     {exam.is_sample && <Badge variant="outline">Sample</Badge>}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
-                    /{exam.slug} · {exam.category} · {exam.question_count} questions
+                    /{exam.slug} · {exam.category} ·{" "}
+                    {exam.question_count === 0 ? (
+                      <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                        <AlertTriangle className="h-3 w-3" /> 0 questions — add some
+                      </span>
+                    ) : (
+                      `${exam.question_count} questions`
+                    )}
                     {exam.youtube_video_id ? " · 🎬 video" : ""}
                   </p>
                   {exam.tags.length > 0 && (
@@ -156,6 +163,15 @@ function ExamsList() {
                       Edit
                     </Button>
                   </Link>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => dup.mutate(exam.id)}
+                    disabled={dup.isPending}
+                    title="Duplicate exam (metadata + questions)"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
                   <Button
                     size="sm"
                     variant="destructive"
