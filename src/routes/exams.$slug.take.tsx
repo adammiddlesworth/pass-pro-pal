@@ -275,6 +275,35 @@ function QuizPage() {
       </div>
       <Progress value={progress} className="mb-8" />
 
+      {exam.youtube_video_id && (
+        <div className="mb-6 overflow-hidden rounded-lg border">
+          <button
+            type="button"
+            onClick={() => setVideoOpen((v) => !v)}
+            className="flex w-full items-center justify-between gap-2 bg-muted/50 px-4 py-2 text-sm font-medium hover:bg-muted"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Youtube className="h-4 w-4 text-primary" />
+              Watch the video walkthrough
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${videoOpen ? "" : "-rotate-90"}`} />
+          </button>
+          {videoOpen && (
+            <div className="relative aspect-video bg-black">
+              <iframe
+                src={youtubeEmbedUrl(exam.youtube_video_id)}
+                title={`${exam.title} — video walkthrough`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 h-full w-full"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+
+
       <Card>
         <CardContent className="p-6">
           <p className="mb-6 text-lg font-medium">{currentQuestion.text}</p>
