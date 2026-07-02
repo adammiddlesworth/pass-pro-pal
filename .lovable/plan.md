@@ -1,115 +1,58 @@
-## Overview
+## Why /admin/exams feels broken
 
-Three changes:
-1. **New `/dashboard`** — stats-focused, matching the mock (Up Next, stat cards, Daily streak, Weakness exam, Recent exams).
-2. **Move the current dashboard UI** (track → topic → exam browser) to **`/exams`**, replacing the old exams list page.
-3. **Single-track experience** — each user has one active track. Free users pick once on first visit; paid users are locked to what they bought. Nothing from the other track is ever shown.
+The page loads and lets you create/edit exam **metadata** (title, slug, YouTube link, tags), but there is **no UI for questions and answers**. Every exam you create there ends up with 0 questions, so nothing shows in the app. That's the "not working" — it's a missing feature, not a broken route.
 
----
+## What I'll add
 
-## 1. Track selection (single-track UX)
+### 1. Paste-to-import (primary workflow)
+On any exam's edit page, a new "Import Questions" panel with:
+- A large textarea that accepts **TSV pasted straight from Google Sheets / Excel / Claude**, or CSV.
+- Expected columns (header row required, order flexible):
+  `question, choice_a, choice_b, choice_c, choice_d, correct, explanation`
+  - `correct` = `A` / `B` / `C` / `D` (case-insensitive)
+  - `explanation` optional
+  - Supports 2-6 choices (blank choice columns are skipped)
+- Live preview table showing parsed rows + row-level validation errors before import.
+- "Replace all questions" vs "Append" toggle.
+- One-click import — writes questions + answers in a single server call.
 
-Add `active_track` to `profiles` (`'real_estate' | 'life_health_insurance' | null`).
+I'll also include a **"Copy template"** button that puts the header row on your clipboard so you can paste it into Sheets/Claude and fill it in.
 
-Resolution order on load:
-1. If the user owns a track (from `purchases`), force `active_track` to that track.
-2. Else if `active_track` is set, use it.
-3. Else show a one-time full-page **"Choose your track"** picker (the current two-card chooser). Selection writes to `profiles.active_track`.
+### 2. Per-question manual editor (for tweaks)
+Below the importer, a list of the exam's existing questions with:
+- Inline edit of question text, choices, correct answer, explanation.
+- Add / delete individual questions.
+- Reorder via up/down buttons.
 
-Track can be changed later from a small "Switch track" link in the header (only offered to free users; hidden once they've purchased).
+### 3. Small quality-of-life fixes on the exams list
+- Show question count with a warning badge when it's 0 (so empty exams are obvious).
+- "Duplicate exam" button (clones metadata + questions) — handy for making variant #38 from #37.
 
-Every dashboard/exams query is scoped to the active track — no cross-track content anywhere.
+## Technical details
 
----
+**New server functions** in `src/lib/admin.functions.ts` (all `requireSupabaseAuth` + `assertAdmin`):
+- `listExamQuestions({ examId })` — returns questions + answers ordered by `position`.
+- `importExamQuestions({ examId, mode: "replace" | "append", rows: ParsedRow[] })` — bulk insert; on `replace` deletes existing questions first (cascade removes answers).
+- `upsertQuestion({ examId, id?, prompt, explanation, choices: [{ text, is_correct }] })` — single question CRUD.
+- `deleteQuestion({ id })`.
+- `reorderQuestions({ examId, orderedIds })`.
+- `duplicateExam({ id })` — copies exam row + tags + questions + answers under a new slug.
 
-## 2. New `/dashboard` (stats)
+**Parser** in a new `src/lib/question-import.ts` (pure, unit-testable):
+- Auto-detects delimiter (tab vs comma) from the first line.
+- Handles quoted fields with embedded commas/newlines.
+- Normalizes headers (lowercase, strip spaces/underscores) so `Choice A` / `choice_a` / `A` all map to the same column.
+- Returns `{ rows: ParsedRow[], errors: { row: number, message: string }[] }`.
 
-Replaces the current dashboard. Layout mirrors the mock:
+**UI** — extend `src/routes/_authenticated/admin.exams.tsx` (or split into `admin.exams.$id.tsx` if the file gets long) with:
+- `<QuestionImporter examId=... />` — textarea + parse preview + import button.
+- `<QuestionList examId=... />` — inline editable rows using existing shadcn `Input` / `Textarea` / `Button`.
 
-```text
-Good morning, {name} 👋
-Your dashboard
-┌──────────────────────────────────────────────────────────┐
-│ UP NEXT   {Topic} — Practice Exam N        [ ▶ Start ]  │
-│           {question_count} questions · ~{est} min        │
-└──────────────────────────────────────────────────────────┘
-┌ Exams taken ┐ ┌ Avg score ┐ ┌ Questions answered ┐
-│    18       │ │   74%     │ │   612 of 1,200     │
-│ ↗ 3 this wk │ │ ↗ +6% mo  │ │                    │
-└─────────────┘ └───────────┘ └────────────────────┘
-┌ 🔥 Daily streak ─────────┐  ┌ ⚠ Weakness exam ─────────┐
-│ 9 days · [✓✓✓✓✓✓T]      │  │ {Lowest topic}            │
-│ Best: 14 · Keep going!   │  │ avg X% · pass 70%         │
-│                          │  │ [Retake weakness exam]    │
-│ Recent exams             │  └───────────────────────────┘
-│ • Agency Law — 88% Today │
-│ • Contracts — 71% Yest.  │
-│ • Finance — 58% Jun 30   │
-└──────────────────────────┘
-```
+**No schema changes** — existing `questions` (with `position`) and `answers` tables already support everything above.
 
-### Up Next logic
+## Out of scope for this pass
+- CSV file upload (paste covers 95% of the flow; can add later).
+- Image attachments on questions.
+- AI-assisted question generation.
 
-Serves exams in the order defined in `src/lib/topics.ts` for the active track. Algorithm (new server fn `getUpNext`):
-
-1. Walk topics in list order.
-2. For each topic, load its published exams ordered by `exam_number` asc.
-3. Return the first exam the user has **not completed** (no `user_attempts` row with `completed_at`). If they have an in-progress attempt on it, label the button "Resume".
-4. If everything is complete, suggest the lowest-scoring exam to retake.
-
-### Stats (server fn `getDashboardStats`)
-
-From `user_attempts` / `user_answers` scoped to active track:
-- `exams_taken` = count of completed attempts; `this_week` = last 7 days.
-- `avg_score` = avg(`score / total`) over completed attempts; delta vs prior 30d.
-- `questions_answered` = count of `user_answers` rows; `total` = sum of `question_count` across published exams in the track.
-
-### Daily streak
-
-New table `user_streaks(user_id pk, current_streak int, best_streak int, last_active_date date)` with RLS `auth.uid() = user_id`, GRANTs for `authenticated` + `service_role`. A server fn `touchStreak` runs whenever an attempt is submitted: if `last_active_date` = today → noop; = yesterday → increment; else → reset to 1. Widget shows the last 7 days as ticks/T (today).
-
-### Weakness widget
-
-Reuses existing weak-spots logic — lowest-scoring topic in the active track + top 3 lowest sub-areas, plus a button linking to `/review/{active_track}`. Hidden for free users (weak-spots is paid).
-
-### Recent exams
-
-Existing `getRecentActivity`, filtered to active track, capped at 3.
-
----
-
-## 3. Move browser to `/exams`
-
-- Delete current `src/routes/exams.index.tsx`.
-- Rename `src/routes/_authenticated/dashboard.tsx` → `src/routes/_authenticated/exams.index.tsx` with these changes:
-  - Remove the top-level track chooser (there's only one track now).
-  - Page opens directly on the topic grid for the active track; breadcrumb collapses to `Topics / {Topic}`.
-  - Search + topic filter behavior preserved.
-- Update all internal links: header nav, "Browse all exams" CTAs, post-quiz "back to exams" → `/exams`.
-
----
-
-## 4. Header / nav
-
-- Signed-in nav: **Dashboard** (`/dashboard`) · **Exams** (`/exams`) · **Weak Spots** (paid only) · account menu.
-- Show active-track badge next to the logo (e.g. "Real Estate"); free users get a "Switch" link, paid users don't.
-
----
-
-## Files changed
-
-- `supabase/migrations/*` — add `profiles.active_track`, create `user_streaks`, GRANTs, RLS, policies.
-- `src/lib/dashboard.functions.ts` — add `getDashboardStats`, `getUpNext`, `getStreak`, `getActiveTrack`, `setActiveTrack`; scope `searchExams` / `getTopicCounts` / `getRecentActivity` to active track.
-- `src/lib/attempts.functions.ts` (or existing quiz submit path) — call `touchStreak` on attempt completion.
-- `src/routes/_authenticated/dashboard.tsx` — rewritten as stats dashboard.
-- `src/routes/_authenticated/exams.index.tsx` — new, holds the old browser UI (topic grid + exam results), scoped to active track.
-- `src/routes/exams.index.tsx` — deleted.
-- `src/routes/_authenticated/select-track.tsx` — one-time picker (redirect target when `active_track` is null and user has no purchase).
-- Header component — nav links + active-track badge.
-- Any `<Link to="/exams">` / `to="/dashboard"` call sites updated.
-
-## Out of scope (ask before adding)
-
-- Estimated time on Up Next card ("~35 min") — will use a simple `question_count * 45s` unless you want a stored field.
-- "Study plan" concept beyond the sequential Up Next.
-- Changing track after purchase (locked by design — say the word if you want an override).
+Want me to also add a "Preview exam" link from the editor so you can jump straight into the quiz UI as the owner after importing? (Uses the existing `/preview/exam/$slug?token=...` route.)
