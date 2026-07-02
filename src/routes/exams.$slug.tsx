@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { initializePaddle, getPaddleEnvironment } from "@/lib/paddle";
 import { resolvePaddlePrice } from "@/utils/payments.functions";
+import { youtubeEmbedUrl } from "@/lib/youtube";
+
 
 export const Route = createFileRoute("/exams/$slug")({
   loader: async ({ params, context }) => {
@@ -83,8 +85,11 @@ function ExamDetailPage() {
       </div>
 
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">{exam.title}</h1>
-        <div className="mt-2 flex items-center gap-2">
+        <h1 className="text-3xl font-bold">
+          {exam.exam_number ? `#${exam.exam_number} · ` : ""}
+          {exam.title}
+        </h1>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
           <Badge variant={hasAccess ? "default" : "secondary"}>
             {hasAccess ? "Full Access" : `Free preview: ${FREEMIUM_PREVIEW_COUNT} questions`}
           </Badge>
@@ -92,12 +97,36 @@ function ExamDetailPage() {
             {exam.question_count} questions total
           </span>
         </div>
+        {(exam as any).tags?.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {(exam as any).tags.map((t: string) => (
+              <Badge key={t} variant="outline" className="text-[11px] font-normal">
+                {t}
+              </Badge>
+            ))}
+          </div>
+        )}
         {exam.description && (
           <p className="mt-4 text-muted-foreground">{exam.description}</p>
         )}
       </div>
 
+      {exam.youtube_video_id && (
+        <div className="mb-8 overflow-hidden rounded-lg border bg-black">
+          <div className="relative aspect-video">
+            <iframe
+              src={youtubeEmbedUrl(exam.youtube_video_id)}
+              title={`${exam.title} — video walkthrough`}
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+              allowFullScreen
+              className="absolute inset-0 h-full w-full"
+            />
+          </div>
+        </div>
+      )}
+
       <Separator className="mb-8" />
+
 
       <Card>
         <CardHeader>

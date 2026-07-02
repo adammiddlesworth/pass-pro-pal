@@ -132,6 +132,15 @@ function Navbar() {
           <Logo variant="light" className="h-8 w-auto" />
         </Link>
         <nav className="flex items-center gap-6">
+          {user && (
+            <Link
+              to="/dashboard"
+              className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
+              activeProps={{ className: "text-primary" }}
+            >
+              Dashboard
+            </Link>
+          )}
           <Link
             to="/exams"
             className="text-sm font-semibold text-secondary/70 transition-colors hover:text-primary"
@@ -155,6 +164,7 @@ function Navbar() {
             </Link>
           )}
         </nav>
+
       </div>
     </header>
   );

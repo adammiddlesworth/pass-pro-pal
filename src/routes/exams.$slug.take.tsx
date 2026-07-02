@@ -16,9 +16,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Lock } from "lucide-react";
+import { Lock, Youtube, ChevronDown } from "lucide-react";
 import { initializePaddle, getPaddleEnvironment } from "@/lib/paddle";
 import { resolvePaddlePrice } from "@/utils/payments.functions";
+import { youtubeEmbedUrl } from "@/lib/youtube";
+
 
 export const Route = createFileRoute("/exams/$slug/take")({
   loader: async ({ params, context }) => {
@@ -43,6 +45,8 @@ function QuizPage() {
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(true);
+
 
   const { data: access } = useQuery({
     queryKey: ["category-access"],
@@ -270,6 +274,35 @@ function QuizPage() {
         <span className="text-sm font-medium">{exam.title}</span>
       </div>
       <Progress value={progress} className="mb-8" />
+
+      {exam.youtube_video_id && (
+        <div className="mb-6 overflow-hidden rounded-lg border">
+          <button
+            type="button"
+            onClick={() => setVideoOpen((v) => !v)}
+            className="flex w-full items-center justify-between gap-2 bg-muted/50 px-4 py-2 text-sm font-medium hover:bg-muted"
+          >
+            <span className="inline-flex items-center gap-2">
+              <Youtube className="h-4 w-4 text-primary" />
+              Watch the video walkthrough
+            </span>
+            <ChevronDown className={`h-4 w-4 transition-transform ${videoOpen ? "" : "-rotate-90"}`} />
+          </button>
+          {videoOpen && (
+            <div className="relative aspect-video bg-black">
+              <iframe
+                src={youtubeEmbedUrl(exam.youtube_video_id)}
+                title={`${exam.title} — video walkthrough`}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+                className="absolute inset-0 h-full w-full"
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+
 
       <Card>
         <CardContent className="p-6">
