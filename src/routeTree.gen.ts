@@ -12,10 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ExamsIndexRouteImport } from './routes/exams.index'
 import { Route as ReviewCategoryRouteImport } from './routes/review.$category'
 import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as ExamsSlugIndexRouteImport } from './routes/exams.$slug.index'
 import { Route as PreviewExamSlugRouteImport } from './routes/preview.exam.$slug'
 import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
@@ -36,11 +34,6 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ExamsIndexRoute = ExamsIndexRouteImport.update({
-  id: '/exams/',
-  path: '/exams/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ReviewCategoryRoute = ReviewCategoryRouteImport.update({
   id: '/review/$category',
   path: '/review/$category',
@@ -50,11 +43,6 @@ const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
   id: '/checkout/success',
   path: '/checkout/success',
   getParentRoute: () => rootRouteImport,
-} as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const ExamsSlugIndexRoute = ExamsSlugIndexRouteImport.update({
   id: '/exams/$slug/',
@@ -86,10 +74,8 @@ const ApiPublicPaymentsWebhookRoute =
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/dashboard': typeof AuthenticatedDashboardRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/review/$category': typeof ReviewCategoryRoute
-  '/exams/': typeof ExamsIndexRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
@@ -99,10 +85,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
-  '/dashboard': typeof AuthenticatedDashboardRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/review/$category': typeof ReviewCategoryRoute
-  '/exams': typeof ExamsIndexRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
@@ -114,10 +98,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
-  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/review/$category': typeof ReviewCategoryRoute
-  '/exams/': typeof ExamsIndexRoute
   '/_authenticated/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
@@ -129,10 +111,8 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
-    | '/dashboard'
     | '/checkout/success'
     | '/review/$category'
-    | '/exams/'
     | '/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
@@ -142,10 +122,8 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
-    | '/dashboard'
     | '/checkout/success'
     | '/review/$category'
-    | '/exams'
     | '/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
@@ -156,10 +134,8 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
-    | '/_authenticated/dashboard'
     | '/checkout/success'
     | '/review/$category'
-    | '/exams/'
     | '/_authenticated/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
@@ -173,7 +149,6 @@ export interface RootRouteChildren {
   AuthRoute: typeof AuthRoute
   CheckoutSuccessRoute: typeof CheckoutSuccessRoute
   ReviewCategoryRoute: typeof ReviewCategoryRoute
-  ExamsIndexRoute: typeof ExamsIndexRoute
   ExamsSlugTakeRoute: typeof ExamsSlugTakeRoute
   PreviewExamSlugRoute: typeof PreviewExamSlugRoute
   ExamsSlugIndexRoute: typeof ExamsSlugIndexRoute
@@ -203,13 +178,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/exams/': {
-      id: '/exams/'
-      path: '/exams'
-      fullPath: '/exams/'
-      preLoaderRoute: typeof ExamsIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/review/$category': {
       id: '/review/$category'
       path: '/review/$category'
@@ -223,13 +191,6 @@ declare module '@tanstack/react-router' {
       fullPath: '/checkout/success'
       preLoaderRoute: typeof CheckoutSuccessRouteImport
       parentRoute: typeof rootRouteImport
-    }
-    '/_authenticated/dashboard': {
-      id: '/_authenticated/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/exams/$slug/': {
       id: '/exams/$slug/'
@@ -270,12 +231,10 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
-  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedAdminExamsRoute: typeof AuthenticatedAdminExamsRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
-  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedAdminExamsRoute: AuthenticatedAdminExamsRoute,
 }
 
@@ -288,7 +247,6 @@ const rootRouteChildren: RootRouteChildren = {
   AuthRoute: AuthRoute,
   CheckoutSuccessRoute: CheckoutSuccessRoute,
   ReviewCategoryRoute: ReviewCategoryRoute,
-  ExamsIndexRoute: ExamsIndexRoute,
   ExamsSlugTakeRoute: ExamsSlugTakeRoute,
   PreviewExamSlugRoute: PreviewExamSlugRoute,
   ExamsSlugIndexRoute: ExamsSlugIndexRoute,
