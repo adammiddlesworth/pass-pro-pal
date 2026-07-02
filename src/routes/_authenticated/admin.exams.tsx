@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useState, useMemo, useEffect } from "react";
 import { z } from "zod";
-import { zodValidator, fallback } from "@tanstack/zod-adapter";
+import { zodValidator } from "@tanstack/zod-adapter";
 import {
   checkIsAdmin,
   listAllExams,
@@ -36,9 +36,9 @@ import { toast } from "sonner";
 import { Pencil, Plus, Trash2, ArrowLeft, Copy, AlertTriangle } from "lucide-react";
 
 const searchSchema = z.object({
-  edit: fallback(z.string().optional(), undefined),
-  new: fallback(z.boolean().optional(), undefined),
-});
+  edit: z.string().optional(),
+  new: z.boolean().optional(),
+}).partial();
 
 export const Route = createFileRoute("/_authenticated/admin/exams")({
   validateSearch: zodValidator(searchSchema),
