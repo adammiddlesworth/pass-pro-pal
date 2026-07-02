@@ -120,6 +120,8 @@ import { Logo } from "@/components/brand/Logo";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { checkIsAdmin } from "@/lib/admin.functions";
 import { getActiveTrack, setActiveTrack } from "@/lib/track.functions";
+import { ThemeToggle } from "@/components/ThemeToggle";
+
 
 
 function Navbar() {
@@ -209,6 +211,7 @@ function Navbar() {
               Exams
             </Link>
           )}
+          <ThemeToggle />
           {loading ? null : user ? (
             <button
               onClick={handleSignOut}
