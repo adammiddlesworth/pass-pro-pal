@@ -15,6 +15,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { initializePaddle, getPaddleEnvironment } from "@/lib/paddle";
 import { resolvePaddlePrice } from "@/utils/payments.functions";
+import { youtubeEmbedUrl } from "@/lib/youtube";
+
 
 export const Route = createFileRoute("/exams/$slug")({
   loader: async ({ params, context }) => {
