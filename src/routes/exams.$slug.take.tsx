@@ -45,6 +45,8 @@ function QuizPage() {
   const [submitted, setSubmitted] = useState(false);
   const [saving, setSaving] = useState(false);
   const [checkingOut, setCheckingOut] = useState(false);
+  const [videoOpen, setVideoOpen] = useState(true);
+
 
   const { data: access } = useQuery({
     queryKey: ["category-access"],
