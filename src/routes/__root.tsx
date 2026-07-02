@@ -129,10 +129,22 @@ function Navbar() {
     queryFn: () => checkIsAdmin(),
     enabled: !!user,
   });
+  const queryClient = useQueryClient();
+  const { data: activeTrack } = useQuery({
+    queryKey: ["active-track"],
+    queryFn: () => getActiveTrack(),
+    enabled: !!user && !!adminCheck?.isAdmin,
+  });
+  const switchTrack = useMutation({
+    mutationFn: (track: "real_estate" | "life_health_insurance") =>
+      setActiveTrack({ data: { track } }),
+    onSuccess: () => queryClient.invalidateQueries(),
+  });
 
   const handleSignOut = async () => {
     await supabase.auth.signOut();
   };
+
 
   return (
     <header className="border-b border-border bg-background">
