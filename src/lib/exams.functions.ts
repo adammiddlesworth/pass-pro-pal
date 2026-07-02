@@ -42,14 +42,16 @@ export const getExamBySlug = createServerFn({ method: "GET" })
     const supabase = getPublicClient();
     const { data: exam, error } = await supabase
       .from("exams")
-      .select("*")
+      .select("*, exam_tags(tag)")
       .eq("slug", data.slug)
       .eq("status", "published")
       .single();
     if (error) throw error;
     if (!exam) throw new Error("Exam not found");
-    return exam;
+    const tags = ((exam as any).exam_tags || []).map((t: any) => t.tag) as string[];
+    return { ...(exam as any), tags } as typeof exam & { tags: string[] };
   });
+
 
 export const getExamQuestions = createServerFn({ method: "GET" })
   .inputValidator((data: { examId: string }) => data)
