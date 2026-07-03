@@ -1,13 +1,26 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle } from "lucide-react";
+import { CheckCircle, ArrowRight } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { getActiveTrack } from "@/lib/track.functions";
 
 export const Route = createFileRoute("/checkout/success")({
   component: CheckoutSuccessPage,
 });
 
 function CheckoutSuccessPage() {
+  const { user, loading: authLoading } = useAuth();
+  const { data: trackInfo, isLoading: trackLoading } = useQuery({
+    queryKey: ["active-track"],
+    queryFn: () => getActiveTrack(),
+    enabled: !!user,
+  });
+
+  const isNewUser = !trackInfo?.track;
+  const loading = authLoading || (trackLoading && !!user);
+
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
       <Card className="w-full max-w-sm text-center">
@@ -18,12 +31,42 @@ function CheckoutSuccessPage() {
           <CardTitle>Purchase Successful</CardTitle>
         </CardHeader>
         <CardContent>
-          <p className="mb-6 text-sm text-muted-foreground">
-            Thank you for your purchase! You now have full access to the exam.
-          </p>
-          <Link to="/exams">
-            <Button className="w-full">Go to Exams</Button>
-          </Link>
+          {loading ? (
+            <p className="text-sm text-muted-foreground">Loading…</p>
+          ) : !user ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Sign in to access your purchase.
+              </p>
+              <Link to="/auth">
+                <Button className="w-full">Sign in</Button>
+              </Link>
+            </div>
+          ) : isNewUser ? (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                Welcome to PassPal! Choose your exam track to get started.
+              </p>
+              <Link to="/select-track">
+                <Button className="w-full">
+                  Choose your track
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-muted-foreground">
+                You're all set! Start studying for your exam.
+              </p>
+              <Link to="/dashboard">
+                <Button className="w-full">
+                  Go to Dashboard
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
+              </Link>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
