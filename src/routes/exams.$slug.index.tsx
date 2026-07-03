@@ -36,6 +36,7 @@ export const Route = createFileRoute("/exams/$slug/")({
 function ExamDetailPage() {
   const { exam } = Route.useLoaderData();
   const { user } = useAuth();
+  const location = useLocation();
   const [checkingOut, setCheckingOut] = useState(false);
 
   const { data: access } = useQuery({
