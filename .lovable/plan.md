@@ -1,38 +1,52 @@
-## Auto-save & Resume Exams
+## Problem Statement
 
-Persist each answer as users tap it, and let them resume an incomplete attempt where they left off.
+Users coming from your GHL marketing funnel will land on the Lovable app, sign up, and expect immediate access to their purchased exam. The current auth flow has several friction points that hurt conversion:
 
-### Data model
-Reuse existing tables — no schema changes required:
-- `user_attempts` already has `started_at`, `completed_at`, `score`. Treat rows with `completed_at IS NULL` as "in progress".
-- `user_answers` (attempt_id, question_id, answer_id, is_correct) stores per-question responses.
+1. **No redirect-back after login** — If a user clicks "Sign In to Start" on an exam page, they are sent to `/auth`, and after login they always land on `/dashboard` instead of returning to the exam they were viewing.
+2. **No password reset flow** — There is no "Forgot password?" link or `/reset-password` page.
+3. **Email confirmation friction** — New sign-ups show "Check your email to confirm your account, then sign in." For buyers coming from a paid funnel, this is an extra step that can block access.
+4. **Weak post-purchase onboarding** — The checkout success page is generic. A brand-new user sees "Go to Exams" with no guidance on selecting their track or starting their first exam.
+5. **No email prefill from GHL** — If your GHL funnel passes the user's email via URL parameter, the app ignores it.
 
-Add one migration:
-- Unique index on `user_answers (attempt_id, question_id)` so upserts replace prior selections cleanly.
-- Optional: index on `user_attempts (user_id, exam_id) WHERE completed_at IS NULL` for fast "resume" lookup.
+## Proposed Changes
 
-### Server functions (`src/lib/attempts.functions.ts`)
-All `requireSupabaseAuth`, all verify the attempt belongs to `userId`:
-- `startOrResumeAttempt({ examId })` — returns an in-progress attempt if one exists, else inserts a new one. Returns `{ attemptId, answers: [{question_id, answer_id}] }`.
-- `saveAnswer({ attemptId, questionId, answerId })` — upsert into `user_answers`, compute `is_correct` server-side by looking up the answer.
-- `finalizeAttempt({ attemptId })` — set `completed_at`, compute `score` from stored answers, return summary.
-- `abandonAttempt({ attemptId })` — optional, for "start over" button.
+### 1. Redirect-back after authentication
+- Update `/auth` to read a `redirect` query parameter and navigate to it after successful sign-in.
+- Update all "Sign In" CTAs throughout the app (exam detail page, etc.) to include `?redirect=` pointing back to the current page.
+- After sign-up, if email confirmation is **disabled**, redirect to the return URL immediately. If confirmation is required, preserve the redirect intent in the confirmation email so the user lands back in the right place.
 
-### Quiz UI changes (`src/routes/exams.$slug.take.tsx`)
-- On mount (paid/authenticated flow only), call `startOrResumeAttempt` and hydrate:
-  - selected answers map
-  - jump `currentIndex` to first unanswered question
-- On answer select, fire `saveAnswer` (fire-and-forget with a small toast on failure). Keep existing immediate correct/incorrect feedback — the server already returns `is_correct`.
-- Submit button calls `finalizeAttempt` instead of doing the batch insert currently used.
-- If a resumed attempt exists, show a small banner: "Resumed from {date} — {n}/{total} answered" with an "Start over" link that calls `abandonAttempt` then reloads.
+### 2. Forgot password flow
+- Add a "Forgot password?" link on the `/auth` page that reveals an email input for password reset.
+- Create a new public `/reset-password` route that:
+  - Reads `type=recovery` from the URL hash (Supabase magic link format).
+  - Shows a form to set a new password.
+  - Calls `supabase.auth.updateUser({ password })` and then redirects to `/auth` (or the stored redirect URL).
 
-### Dashboard integration
-- `getUpNext` in `src/lib/dashboard.functions.ts`: prefer any in-progress attempt over the "recent activity" heuristic. Show a "Resume" badge on the Up Next card.
+### 3. Post-purchase onboarding on checkout success
+- Update `/checkout/success` to detect if the user is new / has no track selected.
+- If new: show a celebratory screen with a clear CTA — "Choose your exam track" → links to `/select-track`.
+- If returning: show "Resume where you left off" and link to `/dashboard` or their most recent exam.
 
-### Scope guards
-- Owner preview route (`/preview/exam/$slug`) and freemium 10-question preview are **not** auto-saved — they don't create `user_attempts` today and stay that way.
-- No UI changes to the admin editor or dashboard layout beyond the "Resume" badge.
+### 4. Accept pre-filled email from GHL links
+- Update `/auth` to read `email` from query parameters and prefill the email input field.
+- This lets your GHL "Get Started" button link to `/auth?email=john@example.com` so the user has one less field to type.
 
-### Files touched
-- New: `supabase/migrations/<ts>_user_answers_unique.sql`, `src/lib/attempts.functions.ts`
-- Edit: `src/routes/exams.$slug.take.tsx`, `src/lib/dashboard.functions.ts`
+### 5. Auto-confirm email signups (decision needed)
+- By default, Supabase requires email confirmation. For a paid funnel this adds friction.
+- **Decision for you:** Should I disable email confirmation so users get instant access after sign-up? This is standard for most SaaS products with a checkout flow. If you keep confirmation enabled, I will at least make sure the redirect-back works through the confirmation email.
+- **Trade-off:** Disabling confirmation is faster for users, but you lose the "verified email" guarantee. Since you also have Paddle checkout (which captures verified email via payment), the risk is low.
+
+## Technical Details
+- All changes are frontend/routing updates — no database migrations needed.
+- The `/reset-password` route must be public (not under `/_authenticated`).
+- No changes to Paddle checkout logic or subscription webhooks.
+
+## Out of Scope
+- Social login changes (Google already works).
+- Changes to the Paddle checkout itself.
+- Moving checkout to GHL (we are keeping it in the app per earlier recommendation).
+
+## Open Decision
+Please confirm:
+- **Auto-confirm email signups** — disable email confirmation for instant access? (Recommended: yes)
+- Any other GHL URL parameters you want passed through (e.g., `utm_source`, `ref`) beyond `email` and `redirect`?
