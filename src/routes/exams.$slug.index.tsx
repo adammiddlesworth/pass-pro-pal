@@ -138,9 +138,9 @@ function ExamDetailPage() {
               <p className="text-sm text-muted-foreground">
                 Sign in to start the free {FREEMIUM_PREVIEW_COUNT}-question preview.
               </p>
-              <Link to="/auth">
-                <Button size="lg">Sign In to Start</Button>
-              </Link>
+          <Link to="/auth" search={{ redirect: location.pathname }}>
+              <Button size="lg">Sign In to Start</Button>
+            </Link>
             </div>
           ) : hasAccess ? (
             <div className="space-y-4">
