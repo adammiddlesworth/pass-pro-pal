@@ -1,4 +1,6 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
+import { z } from "zod";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,17 +10,32 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
 
+const searchSchema = z.object({
+  redirect: z.string().optional(),
+  email: z.string().optional(),
+});
+
 export const Route = createFileRoute("/auth")({
+  validateSearch: zodValidator(searchSchema),
   component: AuthPage,
 });
 
+function isSafeRedirect(path: string | undefined): path is string {
+  if (!path) return false;
+  return path.startsWith("/") && !path.startsWith("//");
+}
+
 function AuthPage() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const { redirect, email: prefilledEmail } = Route.useSearch();
+  const returnUrl = isSafeRedirect(redirect) ? redirect : "/dashboard";
+
+  const [email, setEmail] = useState(prefilledEmail ?? "");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
 
   const handleGoogleSignIn = async () => {
     const result = await lovable.auth.signInWithOAuth("google", {
@@ -31,26 +48,48 @@ function AuthPage() {
     }
   };
 
-  const handleEmailAuth = async (mode: "signin" | "signup") => {
+  const handleEmailAuth = async (tabMode: "signin" | "signup") => {
     setLoading(true);
     setError(null);
     setInfo(null);
     try {
-      if (mode === "signup") {
-        const { error } = await supabase.auth.signUp({
+      if (tabMode === "signup") {
+        const { data, error } = await supabase.auth.signUp({
           email,
           password,
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
-        setInfo("Check your email to confirm your account, then sign in.");
+        // If auto-confirm is enabled, a session may be returned immediately.
+        if (data.session) {
+          navigate({ to: returnUrl });
+        } else {
+          setInfo("Check your email to confirm your account, then sign in.");
+        }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: "/dashboard" });
+        navigate({ to: returnUrl });
       }
     } catch (e: any) {
       setError(e.message ?? "Authentication failed");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    setLoading(true);
+    setError(null);
+    setInfo(null);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
+      });
+      if (error) throw error;
+      setInfo("Password reset link sent. Check your email.");
+    } catch (e: any) {
+      setError(e.message ?? "Failed to send reset link");
     } finally {
       setLoading(false);
     }
@@ -75,43 +114,90 @@ function AuthPage() {
             </div>
           </div>
 
-          <Tabs defaultValue="signin">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="signin">Sign in</TabsTrigger>
-              <TabsTrigger value="signup">Sign up</TabsTrigger>
-            </TabsList>
-            {(["signin", "signup"] as const).map((mode) => (
-              <TabsContent key={mode} value={mode} className="space-y-3 pt-3">
-                <div className="space-y-1">
-                  <Label htmlFor={`${mode}-email`}>Email</Label>
-                  <Input
-                    id={`${mode}-email`}
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    autoComplete="email"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label htmlFor={`${mode}-password`}>Password</Label>
-                  <Input
-                    id={`${mode}-password`}
-                    type="password"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                  />
-                </div>
-                <Button
-                  onClick={() => handleEmailAuth(mode)}
-                  disabled={loading || !email || !password}
-                  className="w-full"
-                >
-                  {mode === "signin" ? "Sign in" : "Create account"}
-                </Button>
-              </TabsContent>
-            ))}
-          </Tabs>
+          {mode === "forgot" ? (
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Enter your email and we'll send you a reset link.
+              </p>
+              <div className="space-y-1">
+                <Label htmlFor="forgot-email">Email</Label>
+                <Input
+                  id="forgot-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  autoComplete="email"
+                />
+              </div>
+              <Button
+                onClick={handleForgotPassword}
+                disabled={loading || !email}
+                className="w-full"
+              >
+                Send reset link
+              </Button>
+              <button
+                type="button"
+                onClick={() => { setMode("signin"); setError(null); setInfo(null); }}
+                className="w-full text-center text-sm text-primary hover:underline"
+              >
+                Back to sign in
+              </button>
+            </div>
+          ) : (
+            <Tabs
+              value={mode}
+              onValueChange={(v) => { setMode(v as "signin" | "signup"); setError(null); }}
+            >
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="signin">Sign in</TabsTrigger>
+                <TabsTrigger value="signup">Sign up</TabsTrigger>
+              </TabsList>
+              {(["signin", "signup"] as const).map((tabMode) => (
+                <TabsContent key={tabMode} value={tabMode} className="space-y-3 pt-3">
+                  <div className="space-y-1">
+                    <Label htmlFor={`${tabMode}-email`}>Email</Label>
+                    <Input
+                      id={`${tabMode}-email`}
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      autoComplete="email"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label htmlFor={`${tabMode}-password`}>Password</Label>
+                    <Input
+                      id={`${tabMode}-password`}
+                      type="password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      autoComplete={tabMode === "signin" ? "current-password" : "new-password"
+                      }
+                    />
+                  </div>
+                  {tabMode === "signin" && (
+                    <div className="text-right">
+                      <button
+                        type="button"
+                        onClick={() => { setMode("forgot"); setError(null); setInfo(null); }}
+                        className="text-xs text-primary hover:underline"
+                      >
+                        Forgot password?
+                      </button>
+                    </div>
+                  )}
+                  <Button
+                    onClick={() => handleEmailAuth(tabMode)}
+                    disabled={loading || !email || !password}
+                    className="w-full"
+                  >
+                    {tabMode === "signin" ? "Sign in" : "Create account"}
+                  </Button>
+                </TabsContent>
+              ))}
+            </Tabs>
+          )}
 
           {error && <p className="text-sm text-destructive">{error}</p>}
           {info && <p className="text-sm text-muted-foreground">{info}</p>}

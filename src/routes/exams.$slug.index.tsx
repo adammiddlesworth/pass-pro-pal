@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
@@ -36,6 +36,7 @@ export const Route = createFileRoute("/exams/$slug/")({
 function ExamDetailPage() {
   const { exam } = Route.useLoaderData();
   const { user } = useAuth();
+  const location = useLocation();
   const [checkingOut, setCheckingOut] = useState(false);
 
   const { data: access } = useQuery({
@@ -138,9 +139,9 @@ function ExamDetailPage() {
               <p className="text-sm text-muted-foreground">
                 Sign in to start the free {FREEMIUM_PREVIEW_COUNT}-question preview.
               </p>
-              <Link to="/auth">
-                <Button size="lg">Sign In to Start</Button>
-              </Link>
+          <Link to="/auth" search={{ redirect: location.pathname }}>
+              <Button size="lg">Sign In to Start</Button>
+            </Link>
             </div>
           ) : hasAccess ? (
             <div className="space-y-4">
