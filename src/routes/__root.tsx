@@ -85,6 +85,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
       { name: "twitter:site", content: "@passpal" },
+      { name: "twitter:title", content: "PassPal - Pass Your Licensing Exam" },
+      { name: "twitter:description", content: "PassPal helps you pass your real estate licensing exam and life & health insurance exam with realistic practice questions." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/53bf8824-006c-4dde-9e8c-da217b84d886/id-preview-9a41504f--c2b8af3c-4bd1-4519-b110-4d1bdbc4e4e2.lovable.app-1783363566012.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/53bf8824-006c-4dde-9e8c-da217b84d886/id-preview-9a41504f--c2b8af3c-4bd1-4519-b110-4d1bdbc4e4e2.lovable.app-1783363566012.png" },
     ],
     links: [
       {
