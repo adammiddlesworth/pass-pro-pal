@@ -45,6 +45,8 @@ function ExamDetailPage() {
   const { exam } = Route.useLoaderData();
   const { user } = useAuth();
   const location = useLocation();
+  const urlAttribution = useSearch({ from: Route.id });
+  const attribution = mergeAttribution(urlAttribution);
   const [checkingOut, setCheckingOut] = useState(false);
 
   const { data: access } = useQuery({
@@ -65,6 +67,10 @@ function ExamDetailPage() {
       const internalPriceId = await resolvePaddlePrice({
         data: { priceId: `${productId}_price`, environment: env },
       });
+      const successUrl = new URL("/checkout/success", window.location.origin);
+      for (const [key, value] of Object.entries(buildAttributionSearch(attribution))) {
+        successUrl.searchParams.set(key, value);
+      }
       (window as any).Paddle.Checkout.open({
         items: [{ priceId: internalPriceId, quantity: 1 }],
         customer: user?.email ? { email: user.email } : undefined,
@@ -72,9 +78,10 @@ function ExamDetailPage() {
           userId: user?.id ?? "",
           productId,
           priceId: `${productId}_price`,
+          ...attribution,
         },
         settings: {
-          successUrl: `${window.location.origin}/checkout/success`,
+          successUrl: successUrl.toString(),
         },
       });
     } finally {
