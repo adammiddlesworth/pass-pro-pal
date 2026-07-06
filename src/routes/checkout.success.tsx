@@ -38,12 +38,10 @@ function CheckoutSuccessPage() {
 
   useEffect(() => {
     if (authLoading || user) return;
-    const authSearch = {
-      email: user?.email,
-      redirect: "/checkout/success",
-      ...buildAttributionSearch(attribution),
-    };
-    navigate({ to: "/auth", search: authSearch });
+    navigate({
+      to: "/auth",
+      search: { redirect: "/checkout/success", ...buildAttributionSearch(attribution) },
+    });
   }, [authLoading, user, navigate, attribution]);
 
   const ctaSearch = buildAttributionSearch(attribution);
