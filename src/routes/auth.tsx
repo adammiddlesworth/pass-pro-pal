@@ -113,8 +113,15 @@ function AuthPage() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
       <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-center">Welcome to PassPal</CardTitle>
+        <CardHeader className="space-y-2">
+          <CardTitle className="text-center">
+            {fromGhl ? "Welcome! Let's get you set up" : "Welcome to PassPal"}
+          </CardTitle>
+          {fromGhl && (
+            <p className="text-center text-sm text-muted-foreground">
+              Thanks for joining from GHL. Create your account to start studying.
+            </p>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <Button onClick={handleGoogleSignIn} variant="outline" className="w-full">
