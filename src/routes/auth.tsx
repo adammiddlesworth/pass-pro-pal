@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,18 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  attributionSearchSchema,
+  buildAttributionSearch,
+  isGhlAttribution,
+  mergeAttribution,
+  storeAttribution,
+} from "@/lib/attribution";
 
 const searchSchema = z.object({
   redirect: z.string().optional(),
   email: z.string().optional(),
+  ...attributionSearchSchema.shape,
 });
 
 export const Route = createFileRoute("/auth")({
@@ -27,8 +35,15 @@ function isSafeRedirect(path: string | undefined): path is string {
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { redirect, email: prefilledEmail } = Route.useSearch();
+  const { redirect, email: prefilledEmail, ...rawAttribution } = Route.useSearch();
+  const attribution = mergeAttribution(rawAttribution);
+  const fromGhl = isGhlAttribution(attribution);
   const returnUrl = isSafeRedirect(redirect) ? redirect : "/dashboard";
+  const returnSearch = buildAttributionSearch(attribution);
+
+  useEffect(() => {
+    storeAttribution(attribution);
+  }, [attribution]);
 
   const [email, setEmail] = useState(prefilledEmail ?? "");
   const [password, setPassword] = useState("");
@@ -62,14 +77,14 @@ function AuthPage() {
         if (error) throw error;
         // If auto-confirm is enabled, a session may be returned immediately.
         if (data.session) {
-          navigate({ to: returnUrl });
+          navigate({ to: returnUrl, search: returnSearch });
         } else {
           setInfo("Check your email to confirm your account, then sign in.");
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: returnUrl });
+        navigate({ to: returnUrl, search: returnSearch });
       }
     } catch (e: any) {
       setError(e.message ?? "Authentication failed");
@@ -98,8 +113,15 @@ function AuthPage() {
   return (
     <div className="flex min-h-[60vh] items-center justify-center px-4">
       <Card className="w-full max-w-sm">
-        <CardHeader>
-          <CardTitle className="text-center">Welcome to PassPal</CardTitle>
+        <CardHeader className="space-y-2">
+          <CardTitle className="text-center">
+            {fromGhl ? "Welcome! Let's get you set up" : "Welcome to PassPal"}
+          </CardTitle>
+          {fromGhl && (
+            <p className="text-center text-sm text-muted-foreground">
+              Thanks for joining from GHL. Create your account to start studying.
+            </p>
+          )}
         </CardHeader>
         <CardContent className="space-y-4">
           <Button onClick={handleGoogleSignIn} variant="outline" className="w-full">

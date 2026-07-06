@@ -1,52 +1,57 @@
-## Problem Statement
+## Goal
+Make users coming from your GHL funnel feel like the app already knows them. Give them a branded entry point, prefill their email, preserve UTM/attribution data through sign-up and checkout, and store that attribution on the purchase record so you can report on GHL ROI.
 
-Users coming from your GHL marketing funnel will land on the Lovable app, sign up, and expect immediate access to their purchased exam. The current auth flow has several friction points that hurt conversion:
+## What we will build
 
-1. **No redirect-back after login** — If a user clicks "Sign In to Start" on an exam page, they are sent to `/auth`, and after login they always land on `/dashboard` instead of returning to the exam they were viewing.
-2. **No password reset flow** — There is no "Forgot password?" link or `/reset-password` page.
-3. **Email confirmation friction** — New sign-ups show "Check your email to confirm your account, then sign in." For buyers coming from a paid funnel, this is an extra step that can block access.
-4. **Weak post-purchase onboarding** — The checkout success page is generic. A brand-new user sees "Go to Exams" with no guidance on selecting their track or starting their first exam.
-5. **No email prefill from GHL** — If your GHL funnel passes the user's email via URL parameter, the app ignores it.
+### 1. Dedicated `/start` page for GHL traffic
+- New public route at `/start`.
+- Reads `email`, `utm_source`, `utm_medium`, `utm_campaign`, `ref` from the URL.
+- Shows a simple welcome card with a clear "Get started" CTA.
+- CTA links to `/auth` with all params preserved.
+- Recommended GHL button link: `https://yourapp.lovable.app/start?email=john@example.com&utm_source=ghl&utm_campaign=...`
 
-## Proposed Changes
+### 2. Update `/auth` to preserve GHL context
+- Accept `utm_source`, `utm_medium`, `utm_campaign`, `ref` in the search schema alongside `email` and `redirect`.
+- Show a contextual message when `utm_source=ghl` (e.g., "Welcome! Let's set up your PassPal account.").
+- Store attribution params in `sessionStorage` so the checkout flow can read them after sign-up.
+- Continue to honor `email` prefill and `redirect` after sign-in/sign-up.
 
-### 1. Redirect-back after authentication
-- Update `/auth` to read a `redirect` query parameter and navigate to it after successful sign-in.
-- Update all "Sign In" CTAs throughout the app (exam detail page, etc.) to include `?redirect=` pointing back to the current page.
-- After sign-up, if email confirmation is **disabled**, redirect to the return URL immediately. If confirmation is required, preserve the redirect intent in the confirmation email so the user lands back in the right place.
+### 3. Carry attribution through Paddle checkout
+- Update the buy button on `/exams/$slug/` to read attribution from `sessionStorage` (or URL fallback) and pass it in Paddle `customData`.
+- Append UTM params to the Paddle `successUrl` so the success page can read them.
+- Keep existing `customData` fields: `userId`, `productId`, `priceId`.
 
-### 2. Forgot password flow
-- Add a "Forgot password?" link on the `/auth` page that reveals an email input for password reset.
-- Create a new public `/reset-password` route that:
-  - Reads `type=recovery` from the URL hash (Supabase magic link format).
-  - Shows a form to set a new password.
-  - Calls `supabase.auth.updateUser({ password })` and then redirects to `/auth` (or the stored redirect URL).
+### 4. Store attribution in the database
+- Migration: add `utm_source`, `utm_medium`, `utm_campaign`, `ref` text columns to the `purchases` table.
+- Update `/api/public/payments/webhook.ts` to read attribution from `customData` and write it with the purchase rows.
+- This lets you query which completed purchases came from GHL or a specific campaign.
 
-### 3. Post-purchase onboarding on checkout success
-- Update `/checkout/success` to detect if the user is new / has no track selected.
-- If new: show a celebratory screen with a clear CTA — "Choose your exam track" → links to `/select-track`.
-- If returning: show "Resume where you left off" and link to `/dashboard` or their most recent exam.
+### 5. Update `/checkout/success`
+- Read UTM params from the URL.
+- If the user is not logged in, redirect to `/auth?email=...&redirect=/checkout/success` with UTM params preserved.
+- Show GHL-specific welcome copy when `utm_source=ghl`.
+- Keep existing new vs returning user CTAs (choose track / go to dashboard).
 
-### 4. Accept pre-filled email from GHL links
-- Update `/auth` to read `email` from query parameters and prefill the email input field.
-- This lets your GHL "Get Started" button link to `/auth?email=john@example.com` so the user has one less field to type.
+### 6. Update `/` root redirect
+- If the user is signed in, redirect to `/dashboard` as today.
+- If logged out and the URL includes GHL-related params, redirect to `/start` instead of bouncing cold to `/auth`.
 
-### 5. Auto-confirm email signups (decision needed)
-- By default, Supabase requires email confirmation. For a paid funnel this adds friction.
-- **Decision for you:** Should I disable email confirmation so users get instant access after sign-up? This is standard for most SaaS products with a checkout flow. If you keep confirmation enabled, I will at least make sure the redirect-back works through the confirmation email.
-- **Trade-off:** Disabling confirmation is faster for users, but you lose the "verified email" guarantee. Since you also have Paddle checkout (which captures verified email via payment), the risk is low.
+## Technical details
+- One small migration: add four text columns to `public.purchases`.
+- No changes to Paddle products, prices, or the auth provider.
+- No new backend service — uses existing TanStack server functions, Paddle checkout, and webhook.
+- All URL params are validated with Zod and sanitized for safe redirects (same-origin paths only).
 
-## Technical Details
-- All changes are frontend/routing updates — no database migrations needed.
-- The `/reset-password` route must be public (not under `/_authenticated`).
-- No changes to Paddle checkout logic or subscription webhooks.
+## Out of scope
+- Syncing contacts or sending data back to GHL via API.
+- Full marketing landing pages beyond the focused `/start` entry point.
+- Email nurture sequences.
 
-## Out of Scope
-- Social login changes (Google already works).
-- Changes to the Paddle checkout itself.
-- Moving checkout to GHL (we are keeping it in the app per earlier recommendation).
-
-## Open Decision
-Please confirm:
-- **Auto-confirm email signups** — disable email confirmation for instant access? (Recommended: yes)
-- Any other GHL URL parameters you want passed through (e.g., `utm_source`, `ref`) beyond `email` and `redirect`?
+## Files that will change
+- New: `src/routes/start.tsx`
+- Edit: `src/routes/auth.tsx`
+- Edit: `src/routes/exams.$slug.index.tsx`
+- Edit: `src/routes/checkout.success.tsx`
+- Edit: `src/routes/index.tsx`
+- Edit: `src/routes/api/public/payments/webhook.ts`
+- Migration: add attribution columns to `purchases`

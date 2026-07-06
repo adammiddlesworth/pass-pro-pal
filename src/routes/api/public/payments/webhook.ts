@@ -27,6 +27,10 @@ async function handleTransactionCompleted(data: any, env: PaddleEnv) {
   const productId: string | undefined = data.customData?.productId;
   const priceId: string | undefined = data.customData?.priceId;
   const transactionId: string = data.id;
+  const utmSource: string | undefined = data.customData?.utm_source;
+  const utmMedium: string | undefined = data.customData?.utm_medium;
+  const utmCampaign: string | undefined = data.customData?.utm_campaign;
+  const ref: string | undefined = data.customData?.ref;
 
   if (!userId || !productId || !priceId) {
     console.warn("Skipping transaction: missing customData", { transactionId });
@@ -41,6 +45,10 @@ async function handleTransactionCompleted(data: any, env: PaddleEnv) {
     transaction_id: transactionId,
     environment: env,
     status: "completed",
+    utm_source: utmSource,
+    utm_medium: utmMedium,
+    utm_campaign: utmCampaign,
+    ref: ref,
     updated_at: new Date().toISOString(),
   }));
 

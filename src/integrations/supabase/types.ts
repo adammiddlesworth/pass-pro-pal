@@ -160,10 +160,14 @@ export type Database = {
           id: string
           price_id: string
           product_id: string
+          ref: string | null
           status: string
           transaction_id: string | null
           updated_at: string
           user_id: string
+          utm_campaign: string | null
+          utm_medium: string | null
+          utm_source: string | null
         }
         Insert: {
           created_at?: string
@@ -171,10 +175,14 @@ export type Database = {
           id?: string
           price_id: string
           product_id: string
+          ref?: string | null
           status?: string
           transaction_id?: string | null
           updated_at?: string
           user_id: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
         }
         Update: {
           created_at?: string
@@ -182,10 +190,14 @@ export type Database = {
           id?: string
           price_id?: string
           product_id?: string
+          ref?: string | null
           status?: string
           transaction_id?: string | null
           updated_at?: string
           user_id?: string
+          utm_campaign?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
         }
         Relationships: []
       }
