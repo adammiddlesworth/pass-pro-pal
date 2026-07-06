@@ -154,7 +154,7 @@ function ExamDetailPage() {
               <p className="text-sm text-muted-foreground">
                 Sign in to start the free {FREEMIUM_PREVIEW_COUNT}-question preview.
               </p>
-          <Link to="/auth" search={{ redirect: location.pathname }}>
+          <Link to="/auth" search={{ redirect: location.pathname, ...buildAttributionSearch(attribution) }}>
               <Button size="lg">Sign In to Start</Button>
             </Link>
             </div>
