@@ -1,4 +1,5 @@
-import { createFileRoute, Link, useLocation } from "@tanstack/react-router";
+import { createFileRoute, Link, useLocation, useSearch } from "@tanstack/react-router";
+import { zodValidator } from "@tanstack/zod-adapter";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
@@ -16,9 +17,16 @@ import { Separator } from "@/components/ui/separator";
 import { initializePaddle, getPaddleEnvironment } from "@/lib/paddle";
 import { resolvePaddlePrice } from "@/utils/payments.functions";
 import { youtubeEmbedUrl } from "@/lib/youtube";
+import {
+  attributionSearchSchema,
+  buildAttributionSearch,
+  mergeAttribution,
+} from "@/lib/attribution";
 
+const searchSchema = attributionSearchSchema;
 
 export const Route = createFileRoute("/exams/$slug/")({
+  validateSearch: zodValidator(searchSchema),
   loader: async ({ params, context }) => {
     const exam = await context.queryClient.ensureQueryData({
       queryKey: ["exam", params.slug],
