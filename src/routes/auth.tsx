@@ -35,8 +35,15 @@ function isSafeRedirect(path: string | undefined): path is string {
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { redirect, email: prefilledEmail } = Route.useSearch();
+  const { redirect, email: prefilledEmail, ...rawAttribution } = Route.useSearch();
+  const attribution = mergeAttribution(rawAttribution);
+  const fromGhl = isGhlAttribution(attribution);
   const returnUrl = isSafeRedirect(redirect) ? redirect : "/dashboard";
+  const returnSearch = buildAttributionSearch(attribution);
+
+  useEffect(() => {
+    storeAttribution(attribution);
+  }, [attribution]);
 
   const [email, setEmail] = useState(prefilledEmail ?? "");
   const [password, setPassword] = useState("");
