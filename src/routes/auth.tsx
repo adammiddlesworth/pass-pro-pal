@@ -77,14 +77,14 @@ function AuthPage() {
         if (error) throw error;
         // If auto-confirm is enabled, a session may be returned immediately.
         if (data.session) {
-          navigate({ to: returnUrl });
+          navigate({ to: returnUrl, search: returnSearch });
         } else {
           setInfo("Check your email to confirm your account, then sign in.");
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: returnUrl });
+        navigate({ to: returnUrl, search: returnSearch });
       }
     } catch (e: any) {
       setError(e.message ?? "Authentication failed");
