@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { z } from "zod";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -9,10 +9,18 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { lovable } from "@/integrations/lovable";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  attributionSearchSchema,
+  buildAttributionSearch,
+  isGhlAttribution,
+  mergeAttribution,
+  storeAttribution,
+} from "@/lib/attribution";
 
 const searchSchema = z.object({
   redirect: z.string().optional(),
   email: z.string().optional(),
+  ...attributionSearchSchema.shape,
 });
 
 export const Route = createFileRoute("/auth")({

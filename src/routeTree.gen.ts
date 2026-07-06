@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as StartRouteImport } from './routes/start'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
@@ -24,6 +25,11 @@ import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
 import { Route as AuthenticatedAdminExamsRouteImport } from './routes/_authenticated/admin.exams'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
+const StartRoute = StartRouteImport.update({
+  id: '/start',
+  path: '/start',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ResetPasswordRoute = ResetPasswordRouteImport.update({
   id: '/reset-password',
   path: '/reset-password',
@@ -100,6 +106,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/start': typeof StartRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/select-track': typeof AuthenticatedSelectTrackRoute
   '/checkout/success': typeof CheckoutSuccessRoute
@@ -115,6 +122,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/start': typeof StartRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/select-track': typeof AuthenticatedSelectTrackRoute
   '/checkout/success': typeof CheckoutSuccessRoute
@@ -132,6 +140,7 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/start': typeof StartRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/select-track': typeof AuthenticatedSelectTrackRoute
   '/checkout/success': typeof CheckoutSuccessRoute
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/start'
     | '/dashboard'
     | '/select-track'
     | '/checkout/success'
@@ -164,6 +174,7 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/reset-password'
+    | '/start'
     | '/dashboard'
     | '/select-track'
     | '/checkout/success'
@@ -180,6 +191,7 @@ export interface FileRouteTypes {
     | '/_authenticated'
     | '/auth'
     | '/reset-password'
+    | '/start'
     | '/_authenticated/dashboard'
     | '/_authenticated/select-track'
     | '/checkout/success'
@@ -197,6 +209,7 @@ export interface RootRouteChildren {
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   AuthRoute: typeof AuthRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  StartRoute: typeof StartRoute
   CheckoutSuccessRoute: typeof CheckoutSuccessRoute
   ReviewCategoryRoute: typeof ReviewCategoryRoute
   ExamsSlugTakeRoute: typeof ExamsSlugTakeRoute
@@ -207,6 +220,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/start': {
+      id: '/start'
+      path: '/start'
+      fullPath: '/start'
+      preLoaderRoute: typeof StartRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reset-password': {
       id: '/reset-password'
       path: '/reset-password'
@@ -330,6 +350,7 @@ const rootRouteChildren: RootRouteChildren = {
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   AuthRoute: AuthRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  StartRoute: StartRoute,
   CheckoutSuccessRoute: CheckoutSuccessRoute,
   ReviewCategoryRoute: ReviewCategoryRoute,
   ExamsSlugTakeRoute: ExamsSlugTakeRoute,
