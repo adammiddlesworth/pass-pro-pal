@@ -308,9 +308,9 @@ function QuizPage() {
       <div className="mb-6 flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
           Question {currentIndex + 1} of {effectiveTotal}
-          {!hasAccess && (
+          {isSample && !purchased && (
             <span className="ml-2 text-xs uppercase tracking-wide text-primary">
-              · Free Preview
+              · Free Sample
             </span>
           )}
         </span>
