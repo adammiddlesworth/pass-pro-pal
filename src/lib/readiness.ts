@@ -1,74 +1,97 @@
-export type ReadinessRecentExam = { pct: number; completed_at: string };
-export type ReadinessTopic = { slug: string; label: string; pct: number; total: number };
+export type ReadinessExam = { score: number };
+export type ReadinessTopic = { name: string; score: number };
 
 export type ReadinessBand = "ready" | "almost" | "not_ready";
+
+export type ReadinessInput = {
+  passMark: number;
+  totalTopics: number;
+  recentExams: ReadinessExam[]; // OLDEST -> NEWEST, up to last 8
+  topics: ReadinessTopic[]; // practiced topics only
+};
 
 export type ReadinessResult = {
   score: number;
   band: ReadinessBand;
   reason: string;
-  recentAvgPct: number | null;
-  trendPct: number | null;
-  weakestTopic: { label: string; pct: number } | null;
+  recentAvg: number | null;
+  trend: number | null;
+  weakestTopic: { name: string; score: number } | null;
+  topicsPracticed: number;
+  totalTopics: number;
 };
 
-export function calculateReadiness(input: {
-  recentExams: ReadinessRecentExam[];
-  topics: ReadinessTopic[];
-  coveragePct: number; // 0-100
-  streakDays: number;
-}): ReadinessResult {
-  const { recentExams, topics, coveragePct, streakDays } = input;
+const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
+const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
 
-  const recent = recentExams.slice(0, 5);
-  const recentAvg = recent.length
-    ? recent.reduce((a, e) => a + e.pct, 0) / recent.length
+export function calculateReadiness(input: ReadinessInput): ReadinessResult {
+  const passMark = input.passMark;
+  const totalTopics = Math.max(1, input.totalTopics);
+  const exams = input.recentExams.slice(-8); // oldest -> newest
+  const scores = exams.map((e) => e.score);
+  const topics = input.topics;
+
+  // 1) Recent performance (45%): passMark -> 60, 100 -> 100, (passMark-30) -> 0
+  const avg = scores.length ? mean(scores) : 0;
+  const perfScore = scores.length
+    ? avg >= passMark
+      ? clamp(60 + ((avg - passMark) / (100 - passMark)) * 40)
+      : clamp(60 - ((passMark - avg) / 30) * 60)
     : 0;
-  const perfScore = Math.max(0, Math.min(100, (recentAvg - 50) * 2));
 
-  const last3 = recent.slice(0, 3);
-  const prior3 = recent.slice(3, 6);
-  const avg = (xs: ReadinessRecentExam[]) =>
-    xs.length ? xs.reduce((a, e) => a + e.pct, 0) / xs.length : null;
-  const trend =
-    avg(last3) !== null && avg(prior3) !== null ? (avg(last3) as number) - (avg(prior3) as number) : 0;
-  const trendScore = Math.max(0, Math.min(100, 50 + trend * 5));
+  // 2) Trend (15%): last3 vs prior3, +/-10 -> 100/0
+  const last3 = scores.slice(-3);
+  const prior3 = scores.slice(-6, -3);
+  const trend = last3.length && prior3.length ? mean(last3) - mean(prior3) : 0;
+  const trendScore = scores.length >= 2 ? clamp(50 + trend * 5) : 50;
 
-  const rated = topics.filter((t) => t.total >= 10);
-  const strong = rated.filter((t) => t.pct >= 70).length;
-  const topicScore = rated.length ? (strong / rated.length) * 100 : 0;
+  // 3) Topic mastery (20%): strong topics / totalTopics
+  const strong = topics.filter((t) => t.score >= passMark).length;
+  const masteryScore = clamp((strong / totalTopics) * 100);
 
-  const volumeScore = Math.min(100, (coveragePct / 60) * 100);
-  const habitScore = Math.min(100, (streakDays / 7) * 100);
+  // 4) Weakest-topic drag (15%)
+  const weakest = topics.length ? [...topics].sort((a, b) => a.score - b.score)[0] : null;
+  const dragScore = !weakest
+    ? 50
+    : weakest.score >= passMark
+      ? 100
+      : clamp(100 - (passMark - weakest.score) * 2);
+
+  // 5) Consistency (5%): 100 - stddev
+  let consistencyScore = 100;
+  if (scores.length >= 2) {
+    const m = mean(scores);
+    const variance = mean(scores.map((s) => (s - m) ** 2));
+    consistencyScore = clamp(100 - Math.sqrt(variance));
+  }
 
   const raw =
-    perfScore * 0.5 +
+    perfScore * 0.45 +
     trendScore * 0.15 +
-    topicScore * 0.2 +
-    volumeScore * 0.1 +
-    habitScore * 0.05;
-  const score = recent.length === 0 ? 0 : Math.round(raw);
+    masteryScore * 0.2 +
+    dragScore * 0.15 +
+    consistencyScore * 0.05;
 
+  const score = scores.length === 0 ? 0 : Math.round(raw);
   const band: ReadinessBand = score >= 80 ? "ready" : score >= 65 ? "almost" : "not_ready";
 
-  const weakest = [...topics]
-    .filter((t) => t.total >= 5)
-    .sort((a, b) => a.pct - b.pct)[0];
+  const topicsPracticed = topics.length;
+  const coverageFrac = topicsPracticed / totalTopics;
 
   let reason: string;
-  if (recent.length === 0) {
+  if (scores.length === 0) {
     reason = "Take an exam to get your first readiness score.";
-  } else if (recent.length < 3) {
-    const n = 3 - recent.length;
+  } else if (scores.length < 3) {
+    const n = 3 - scores.length;
     reason = `Take ${n} more exam${n === 1 ? "" : "s"} to sharpen this estimate.`;
-  } else if (weakest && weakest.pct < 65) {
-    reason = `${weakest.label} is your weakest topic (${Math.round(weakest.pct)}%). Focus here next.`;
+  } else if (weakest && weakest.score < passMark) {
+    reason = `${weakest.name} is your weakest topic (${Math.round(weakest.score)}%). Focus here next.`;
+  } else if (coverageFrac < 0.5) {
+    reason = `You've only practiced ${topicsPracticed} of ${totalTopics} topics. Broaden your coverage.`;
   } else if (trend < -5) {
-    reason = `Recent scores are trending down ${Math.round(-trend)}%. Slow down and review.`;
-  } else if (coveragePct < 40) {
-    reason = `You've only covered ${Math.round(coveragePct)}% of the question bank. Keep going.`;
+    reason = `Recent scores dropped ${Math.round(-trend)}%. Slow down and review.`;
   } else if (band === "ready") {
-    reason = "You're consistently above the pass mark. Keep it up.";
+    reason = `Consistently above the ${passMark}% pass mark. Keep it up.`;
   } else {
     reason = "Almost there — a few more strong sessions will push you over.";
   }
@@ -77,8 +100,10 @@ export function calculateReadiness(input: {
     score,
     band,
     reason,
-    recentAvgPct: recent.length ? Math.round(recentAvg) : null,
-    trendPct: recent.length >= 4 ? Math.round(trend) : null,
-    weakestTopic: weakest ? { label: weakest.label, pct: Math.round(weakest.pct) } : null,
+    recentAvg: scores.length ? Math.round(avg) : null,
+    trend: scores.length >= 2 ? Math.round(trend) : null,
+    weakestTopic: weakest ? { name: weakest.name, score: Math.round(weakest.score) } : null,
+    topicsPracticed,
+    totalTopics,
   };
 }
