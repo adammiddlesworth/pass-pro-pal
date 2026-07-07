@@ -251,16 +251,16 @@ function ReadinessCard({ category }: { category: string }) {
                 />
               </svg>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`text-2xl font-bold leading-none ${hasData ? meta.color : "text-muted-foreground"}`}>
+                <span className={`text-2xl font-bold leading-none ${hasData ? meta.text : "text-muted-foreground"}`}>
                   {hasData ? score : "—"}
                 </span>
                 <span className="mt-0.5 text-[10px] text-muted-foreground">/ 100</span>
               </div>
             </div>
             <div className="min-w-0 flex-1">
-              {hasData && (
+              {hasData && data && (
                 <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${meta.pill}`}>
-                  {meta.label}
+                  {data.status}
                 </span>
               )}
               <p className="mt-2 text-xs leading-snug text-muted-foreground">
