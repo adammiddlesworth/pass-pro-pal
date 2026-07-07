@@ -19,9 +19,12 @@ import {
   getUpNext,
   getStreak,
   getRecentActivity,
+  getReadiness,
 } from "@/lib/dashboard.functions";
+import type { ReadinessResult } from "@/lib/readiness";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
