@@ -107,8 +107,8 @@ function ExamDetailPage() {
           {exam.title}
         </h1>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Badge variant={hasAccess ? "default" : "secondary"}>
-            {hasAccess ? "Full Access" : `Free preview: ${FREEMIUM_PREVIEW_COUNT} questions`}
+          <Badge variant={purchased ? "default" : isSample ? "secondary" : "outline"}>
+            {purchased ? "Full Access" : isSample ? "Free Sample" : "Paid"}
           </Badge>
           <span className="text-sm text-muted-foreground">
             {exam.question_count} questions total
