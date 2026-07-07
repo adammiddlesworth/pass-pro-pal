@@ -100,8 +100,10 @@ export const getWeakSpotsReview = createServerFn({ method: "GET" })
 
     const questionIds = ranked.map((r) => r.qid);
 
-    // 5. Load full question + answer payload.
-    const { data: questions, error: qerr } = await supabase
+    // 5. Load full question + answer payload. Use admin client because
+    // questions/answers RLS now blocks non-sample reads.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: questions, error: qerr } = await supabaseAdmin
       .from("questions")
       .select("*, answers(*)")
       .in("id", questionIds);
