@@ -153,35 +153,33 @@ function ExamDetailPage() {
           {!user ? (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Sign in to start the free {FREEMIUM_PREVIEW_COUNT}-question preview.
+                {isSample
+                  ? "Sign in to take this free sample exam."
+                  : "Sign in to unlock full access to this exam."}
               </p>
-          <Link to="/auth" search={{ redirect: location.pathname, ...buildAttributionSearch(attribution) }}>
-              <Button size="lg">Sign In to Start</Button>
-            </Link>
+              <Link to="/auth" search={{ redirect: location.pathname, ...buildAttributionSearch(attribution) }}>
+                <Button size="lg">Sign In to Start</Button>
+              </Link>
             </div>
           ) : hasAccess ? (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                You have full access to every exam in this track.
+                {purchased
+                  ? "You have full access to every exam in this track."
+                  : "This is a free sample exam — no purchase required."}
               </p>
               <Link to="/exams/$slug/take" params={{ slug: exam.slug }}>
-                <Button size="lg">Start Full Exam</Button>
+                <Button size="lg">Start Exam</Button>
               </Link>
             </div>
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Start with the first {FREEMIUM_PREVIEW_COUNT} questions free. Unlock every exam in this
-                track for ${((exam.price_cents ?? 0) / 100).toFixed(2)}.
+                Unlock every exam in this track for ${((exam.price_cents ?? 0) / 100).toFixed(2)}.
               </p>
-              <div className="flex flex-wrap gap-3">
-                <Link to="/exams/$slug/take" params={{ slug: exam.slug }}>
-                  <Button size="lg">Start Free Preview</Button>
-                </Link>
-                <Button size="lg" variant="outline" onClick={handleBuy} disabled={checkingOut}>
-                  {checkingOut ? "Loading..." : "Unlock Full Access"}
-                </Button>
-              </div>
+              <Button size="lg" onClick={handleBuy} disabled={checkingOut}>
+                {checkingOut ? "Loading..." : "Unlock Full Access"}
+              </Button>
             </div>
           )}
         </CardContent>
