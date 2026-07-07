@@ -31,17 +31,13 @@ export const Route = createFileRoute("/exams/$slug/take")({
       queryKey: ["exam", params.slug],
       queryFn: () => getExamBySlug({ data: { slug: params.slug } }),
     });
-    const questions = await context.queryClient.ensureQueryData({
-      queryKey: ["exam-questions", exam.id],
-      queryFn: () => getExamQuestions({ data: { examId: exam.id } }),
-    });
-    return { exam, questions };
+    return { exam };
   },
   component: QuizPage,
 });
 
 function QuizPage() {
-  const { exam, questions } = Route.useLoaderData();
+  const { exam } = Route.useLoaderData();
   const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
@@ -63,15 +59,26 @@ function QuizPage() {
   const isSample = !!(exam as any).is_sample;
   const hasAccess = purchased || isSample;
 
+  // Only fetch questions once we know the user has access (sample or purchased).
+  // For anonymous or paywalled visitors we render the paywall instead.
+  const { data: questions = [] } = useQuery({
+    queryKey: ["exam-questions", exam.id],
+    queryFn: () => getExamQuestions({ data: { examId: exam.id } }),
+    enabled: isSample || (!!user && hasAccess),
+  });
+
   const effectiveTotal = questions.length;
   const currentQuestion = questions[currentIndex];
   const paywalled = !!user && !hasAccess;
-  const progress = ((Math.min(currentIndex, effectiveTotal) + (submitted ? 1 : 0)) / effectiveTotal) * 100;
+  const progress = effectiveTotal > 0
+    ? ((Math.min(currentIndex, effectiveTotal) + (submitted ? 1 : 0)) / effectiveTotal) * 100
+    : 0;
 
   // Start or resume an attempt for authenticated + full-access users.
   useEffect(() => {
     if (initRef.current) return;
     if (!user || !hasAccess) return;
+    if (questions.length === 0) return;
     initRef.current = true;
     (async () => {
       try {
@@ -219,6 +226,42 @@ function QuizPage() {
             </div>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  // Anonymous visitor on a non-sample exam — nudge to sign in.
+  if (!user && !isSample) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Lock className="h-7 w-7" />
+            </div>
+            <h1 className="text-2xl font-bold">Sign in to take this exam</h1>
+            <p className="mx-auto mt-3 max-w-md text-muted-foreground">
+              This exam is part of a paid track. Sign in and unlock full access to start.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Link to="/auth">
+                <Button size="lg">Sign in</Button>
+              </Link>
+              <Link to="/exams">
+                <Button size="lg" variant="outline">Back to Exams</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Questions still loading.
+  if (questions.length === 0 || !currentQuestion) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12 text-sm text-muted-foreground">
+        Loading exam…
       </div>
     );
   }

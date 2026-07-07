@@ -70,8 +70,10 @@ export const saveAnswer = createServerFn({ method: "POST" })
     if (aErr) throw aErr;
     if (!attempt || attempt.user_id !== userId) throw new Error("Attempt not found");
 
-    // Look up correctness server-side.
-    const { data: ans, error: ansErr } = await supabase
+    // Look up correctness server-side. Uses admin client because answers
+    // RLS restricts direct reads to sample exams only.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: ans, error: ansErr } = await supabaseAdmin
       .from("answers")
       .select("id, is_correct, question_id")
       .eq("id", data.answerId)

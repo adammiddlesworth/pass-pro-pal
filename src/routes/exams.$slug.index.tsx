@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   getExamBySlug,
-  getExamQuestions,
   getUserCategoryAccess,
   CATEGORY_PRODUCT_IDS,
 } from "@/lib/exams.functions";
@@ -31,11 +30,7 @@ export const Route = createFileRoute("/exams/$slug/")({
       queryKey: ["exam", params.slug],
       queryFn: () => getExamBySlug({ data: { slug: params.slug } }),
     });
-    const questions = await context.queryClient.ensureQueryData({
-      queryKey: ["exam-questions", exam.id],
-      queryFn: () => getExamQuestions({ data: { examId: exam.id } }),
-    });
-    return { exam, questions };
+    return { exam };
   },
   component: ExamDetailPage,
 });

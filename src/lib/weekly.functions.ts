@@ -31,9 +31,9 @@ export type WeeklyMixPayload = {
 // Public read — current week's mix (falls back to most recent if not yet built).
 export const getCurrentWeeklyMix = createServerFn({ method: "GET" }).handler(
   async (): Promise<WeeklyMixPayload | null> => {
-    const supabase = getPublicClient();
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: mix, error } = await supabase
+    const { data: mix, error } = await supabaseAdmin
       .from("weekly_mixes")
       .select("id, week_start")
       .order("week_start", { ascending: false })
@@ -42,7 +42,7 @@ export const getCurrentWeeklyMix = createServerFn({ method: "GET" }).handler(
     if (error) throw error;
     if (!mix) return null;
 
-    const { data: rows, error: qerr } = await supabase
+    const { data: rows, error: qerr } = await supabaseAdmin
       .from("weekly_mix_questions")
       .select("order_index, questions(*, answers(*))")
       .eq("mix_id", mix.id)

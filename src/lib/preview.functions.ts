@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 import { notFound } from "@tanstack/react-router";
 import { createHash, timingSafeEqual } from "node:crypto";
-import type { Database } from "@/integrations/supabase/types";
 
 function tokenMatches(input: string, expected: string): boolean {
   const a = createHash("sha256").update(input, "utf8").digest();
@@ -18,20 +16,16 @@ export const getPreviewExam = createServerFn({ method: "GET" })
       throw notFound();
     }
 
-    const supabase = createClient<Database>(
-      process.env.SUPABASE_URL!,
-      process.env.SUPABASE_PUBLISHABLE_KEY!,
-      { auth: { storage: undefined, persistSession: false, autoRefreshToken: false } },
-    );
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
-    const { data: exam, error: examErr } = await supabase
+    const { data: exam, error: examErr } = await supabaseAdmin
       .from("exams")
       .select("*")
       .eq("slug", data.slug)
       .single();
     if (examErr || !exam) throw notFound();
 
-    const { data: questions, error: qErr } = await supabase
+    const { data: questions, error: qErr } = await supabaseAdmin
       .from("questions")
       .select("*, answers(*)")
       .eq("exam_id", exam.id)
