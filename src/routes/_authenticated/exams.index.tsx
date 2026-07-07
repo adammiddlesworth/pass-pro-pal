@@ -75,6 +75,9 @@ function ExamsBrowser() {
   if (!topic) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-12">
+        <div className="mb-6">
+          <WeeklyChallengeCard />
+        </div>
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h1 className="text-3xl font-bold">{catLabel} exams</h1>
