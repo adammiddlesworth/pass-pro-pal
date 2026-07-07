@@ -1,57 +1,131 @@
 ## Goal
-Make users coming from your GHL funnel feel like the app already knows them. Give them a branded entry point, prefill their email, preserve UTM/attribution data through sign-up and checkout, and store that attribution on the purchase record so you can report on GHL ROI.
+Replace the "Avg score" tile with an "Exam-day readiness (estimate)" gauge that scores 0–100, shows a colored status band, and explains the top reason.
 
-## What we will build
+## Note on the missing paste
+Your message referenced a `calculateReadiness` function + data shape, but the paste block was empty. I'm proposing a concrete function below so we can move forward — if you paste your version, I'll swap it in verbatim without changing the UI.
 
-### 1. Dedicated `/start` page for GHL traffic
-- New public route at `/start`.
-- Reads `email`, `utm_source`, `utm_medium`, `utm_campaign`, `ref` from the URL.
-- Shows a simple welcome card with a clear "Get started" CTA.
-- CTA links to `/auth` with all params preserved.
-- Recommended GHL button link: `https://yourapp.lovable.app/start?email=john@example.com&utm_source=ghl&utm_campaign=...`
+## 1. New server function — `getReadiness`
+File: `src/lib/dashboard.functions.ts` (new export).
 
-### 2. Update `/auth` to preserve GHL context
-- Accept `utm_source`, `utm_medium`, `utm_campaign`, `ref` in the search schema alongside `email` and `redirect`.
-- Show a contextual message when `utm_source=ghl` (e.g., "Welcome! Let's set up your PassPal account.").
-- Store attribution params in `sessionStorage` so the checkout flow can read them after sign-up.
-- Continue to honor `email` prefill and `redirect` after sign-in/sign-up.
+Aggregates from existing tables (no schema changes):
+- `recentExams`: last 5 completed `user_attempts` in the active category → `{ pct, completed_at }`.
+- `topics`: per-topic accuracy via `user_answers → questions → exam_tags` joined on category. Shape: `{ slug, label, correct, total, pct }`.
+- `daysUntilExam`: not tracked yet → passed as `null`.
+- `streak`: reuse `user_streaks.current_streak`.
+- `questionsAnswered` / `questionsTotal`: reuse existing stats logic.
 
-### 3. Carry attribution through Paddle checkout
-- Update the buy button on `/exams/$slug/` to read attribution from `sessionStorage` (or URL fallback) and pass it in Paddle `customData`.
-- Append UTM params to the Paddle `successUrl` so the success page can read them.
-- Keep existing `customData` fields: `userId`, `productId`, `priceId`.
+Returns:
+```
+{
+  score: number,           // 0-100
+  band: "ready" | "almost" | "not_ready",
+  reason: string,          // top weakness sentence
+  recentAvgPct: number|null,
+  weakestTopic: { label, pct } | null,
+  trendPct: number|null,   // last3 vs prior3 delta
+  coveragePct: number,     // questionsAnswered / questionsTotal
+}
+```
 
-### 4. Store attribution in the database
-- Migration: add `utm_source`, `utm_medium`, `utm_campaign`, `ref` text columns to the `purchases` table.
-- Update `/api/public/payments/webhook.ts` to read attribution from `customData` and write it with the purchase rows.
-- This lets you query which completed purchases came from GHL or a specific campaign.
+## 2. `calculateReadiness` (pure function)
+File: `src/lib/readiness.ts`. Deterministic, unit-testable, called inside `getReadiness`.
 
-### 5. Update `/checkout/success`
-- Read UTM params from the URL.
-- If the user is not logged in, redirect to `/auth?email=...&redirect=/checkout/success` with UTM params preserved.
-- Show GHL-specific welcome copy when `utm_source=ghl`.
-- Keep existing new vs returning user CTAs (choose track / go to dashboard).
+```ts
+type RecentExam = { pct: number; completed_at: string };
+type Topic = { slug: string; label: string; pct: number; total: number };
 
-### 6. Update `/` root redirect
-- If the user is signed in, redirect to `/dashboard` as today.
-- If logged out and the URL includes GHL-related params, redirect to `/start` instead of bouncing cold to `/auth`.
+export function calculateReadiness(input: {
+  recentExams: RecentExam[];
+  topics: Topic[];
+  coveragePct: number;   // 0-100
+  streakDays: number;
+}) {
+  const { recentExams, topics, coveragePct, streakDays } = input;
 
-## Technical details
-- One small migration: add four text columns to `public.purchases`.
-- No changes to Paddle products, prices, or the auth provider.
-- No new backend service — uses existing TanStack server functions, Paddle checkout, and webhook.
-- All URL params are validated with Zod and sanitized for safe redirects (same-origin paths only).
+  // Recent performance (50%): avg of last up-to-5 exams, mapped 50→0, 100→100.
+  const recent = recentExams.slice(0, 5);
+  const recentAvg = recent.length
+    ? recent.reduce((a, e) => a + e.pct, 0) / recent.length
+    : 0;
+  const perfScore = Math.max(0, Math.min(100, (recentAvg - 50) * 2));
+
+  // Consistency (15%): trend of last 3 vs prior 3.
+  const last3 = recent.slice(0, 3);
+  const prior3 = recent.slice(3, 6);
+  const avg = (xs: RecentExam[]) =>
+    xs.length ? xs.reduce((a, e) => a + e.pct, 0) / xs.length : null;
+  const trend =
+    avg(last3) !== null && avg(prior3) !== null ? avg(last3)! - avg(prior3)! : 0;
+  const trendScore = Math.max(0, Math.min(100, 50 + trend * 5));
+
+  // Topic coverage (20%): fraction of topics with ≥10 answers AND ≥70% accuracy.
+  const rated = topics.filter((t) => t.total >= 10);
+  const strong = rated.filter((t) => t.pct >= 70).length;
+  const topicScore = rated.length ? (strong / rated.length) * 100 : 0;
+
+  // Volume (10%): coverage of question bank, capped at 60% = full credit.
+  const volumeScore = Math.min(100, (coveragePct / 60) * 100);
+
+  // Habit (5%): streak, capped at 7 days.
+  const habitScore = Math.min(100, (streakDays / 7) * 100);
+
+  const score = Math.round(
+    perfScore * 0.5 +
+      trendScore * 0.15 +
+      topicScore * 0.2 +
+      volumeScore * 0.1 +
+      habitScore * 0.05
+  );
+
+  const band: "ready" | "almost" | "not_ready" =
+    score >= 80 ? "ready" : score >= 65 ? "almost" : "not_ready";
+
+  // Reason line — pick the biggest drag.
+  const weakest = [...topics]
+    .filter((t) => t.total >= 5)
+    .sort((a, b) => a.pct - b.pct)[0];
+  let reason: string;
+  if (recent.length < 3) {
+    reason = `Take ${3 - recent.length} more exam${3 - recent.length === 1 ? "" : "s"} to sharpen this estimate.`;
+  } else if (weakest && weakest.pct < 65) {
+    reason = `${weakest.label} is your weakest topic (${Math.round(weakest.pct)}%). Focus here next.`;
+  } else if (trend < -5) {
+    reason = `Your recent scores are trending down ${Math.round(-trend)}%. Slow down and review.`;
+  } else if (coveragePct < 40) {
+    reason = `You've only covered ${Math.round(coveragePct)}% of the question bank. Keep going.`;
+  } else if (band === "ready") {
+    reason = "You're consistently above the pass mark. Keep it up.";
+  } else {
+    reason = "Almost there — a few more strong sessions will push you over.";
+  }
+
+  return { score, band, reason, recentAvgPct: recent.length ? Math.round(recentAvg) : null, trendPct: Math.round(trend) };
+}
+```
+
+Weights: perf 50 / trend 15 / topics 20 / volume 10 / habit 5 (sum 100).
+
+## 3. Dashboard UI
+File: `src/routes/_authenticated/dashboard.tsx`.
+
+- Replace the "Avg score" `StatCard` in the top stats row with a new `<ReadinessCard />` that spans the same slot (still 3-column grid).
+- Circular gauge: inline SVG (no new deps). 120px, stroke 12, arc from 0→score/100 * 360°, color driven by band (`text-emerald-500` / `text-amber-500` / `text-rose-500`, using existing tokens).
+- Center: big score number, "/ 100" subscript.
+- Below gauge: band pill ("Ready" / "Almost there" / "Not ready yet") + reason line in `text-muted-foreground`.
+- Header: "Exam-day readiness (estimate)" with an info tooltip explaining weights.
+- Empty state (no completed exams): show `—` and "Take an exam to get your first readiness score."
+
+Data via `useQuery(["readiness", category], () => getReadiness({ data: { category } }))`.
+
+## 4. Keep existing behavior
+- Weakness card and WeaknessCard still uses `getDashboardStats` for the pass-mark bar — unchanged.
+- No routing, no schema, no auth changes.
+
+## Files
+- new: `src/lib/readiness.ts`
+- edit: `src/lib/dashboard.functions.ts` (add `getReadiness`)
+- edit: `src/routes/_authenticated/dashboard.tsx` (replace Avg score tile)
 
 ## Out of scope
-- Syncing contacts or sending data back to GHL via API.
-- Full marketing landing pages beyond the focused `/start` entry point.
-- Email nurture sequences.
-
-## Files that will change
-- New: `src/routes/start.tsx`
-- Edit: `src/routes/auth.tsx`
-- Edit: `src/routes/exams.$slug.index.tsx`
-- Edit: `src/routes/checkout.success.tsx`
-- Edit: `src/routes/index.tsx`
-- Edit: `src/routes/api/public/payments/webhook.ts`
-- Migration: add attribution columns to `purchases`
+- Scheduled exam date input (used as `daysUntilExam` weight) — can add later behind a settings field.
+- Persisting readiness history for trend charts.
