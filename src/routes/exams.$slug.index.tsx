@@ -7,7 +7,6 @@ import {
   getExamQuestions,
   getUserCategoryAccess,
   CATEGORY_PRODUCT_IDS,
-  FREEMIUM_PREVIEW_COUNT,
 } from "@/lib/exams.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
@@ -56,7 +55,9 @@ function ExamDetailPage() {
   });
 
   const productId = CATEGORY_PRODUCT_IDS[exam.category];
-  const hasAccess = !!access?.[exam.category];
+  const isSample = !!(exam as any).is_sample;
+  const purchased = !!access?.[exam.category];
+  const hasAccess = purchased || isSample;
 
   const handleBuy = async () => {
     if (!productId) return;
@@ -106,8 +107,8 @@ function ExamDetailPage() {
           {exam.title}
         </h1>
         <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Badge variant={hasAccess ? "default" : "secondary"}>
-            {hasAccess ? "Full Access" : `Free preview: ${FREEMIUM_PREVIEW_COUNT} questions`}
+          <Badge variant={purchased ? "default" : isSample ? "secondary" : "outline"}>
+            {purchased ? "Full Access" : isSample ? "Free Sample" : "Paid"}
           </Badge>
           <span className="text-sm text-muted-foreground">
             {exam.question_count} questions total
@@ -152,35 +153,33 @@ function ExamDetailPage() {
           {!user ? (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Sign in to start the free {FREEMIUM_PREVIEW_COUNT}-question preview.
+                {isSample
+                  ? "Sign in to take this free sample exam."
+                  : "Sign in to unlock full access to this exam."}
               </p>
-          <Link to="/auth" search={{ redirect: location.pathname, ...buildAttributionSearch(attribution) }}>
-              <Button size="lg">Sign In to Start</Button>
-            </Link>
+              <Link to="/auth" search={{ redirect: location.pathname, ...buildAttributionSearch(attribution) }}>
+                <Button size="lg">Sign In to Start</Button>
+              </Link>
             </div>
           ) : hasAccess ? (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                You have full access to every exam in this track.
+                {purchased
+                  ? "You have full access to every exam in this track."
+                  : "This is a free sample exam — no purchase required."}
               </p>
               <Link to="/exams/$slug/take" params={{ slug: exam.slug }}>
-                <Button size="lg">Start Full Exam</Button>
+                <Button size="lg">Start Exam</Button>
               </Link>
             </div>
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Start with the first {FREEMIUM_PREVIEW_COUNT} questions free. Unlock every exam in this
-                track for ${((exam.price_cents ?? 0) / 100).toFixed(2)}.
+                Unlock every exam in this track for ${((exam.price_cents ?? 0) / 100).toFixed(2)}.
               </p>
-              <div className="flex flex-wrap gap-3">
-                <Link to="/exams/$slug/take" params={{ slug: exam.slug }}>
-                  <Button size="lg">Start Free Preview</Button>
-                </Link>
-                <Button size="lg" variant="outline" onClick={handleBuy} disabled={checkingOut}>
-                  {checkingOut ? "Loading..." : "Unlock Full Access"}
-                </Button>
-              </div>
+              <Button size="lg" onClick={handleBuy} disabled={checkingOut}>
+                {checkingOut ? "Loading..." : "Unlock Full Access"}
+              </Button>
             </div>
           )}
         </CardContent>

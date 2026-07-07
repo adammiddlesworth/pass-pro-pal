@@ -6,7 +6,6 @@ import {
   getExamQuestions,
   getUserCategoryAccess,
   CATEGORY_PRODUCT_IDS,
-  FREEMIUM_PREVIEW_COUNT,
 } from "@/lib/exams.functions";
 import {
   startOrResumeAttempt,
@@ -60,12 +59,13 @@ function QuizPage() {
     queryFn: () => getUserCategoryAccess(),
     enabled: !!user,
   });
-  const hasAccess = !!access?.[exam.category];
+  const purchased = !!access?.[exam.category];
+  const isSample = !!(exam as any).is_sample;
+  const hasAccess = purchased || isSample;
 
-  const previewLimit = Math.min(FREEMIUM_PREVIEW_COUNT, questions.length);
-  const effectiveTotal = hasAccess ? questions.length : previewLimit;
+  const effectiveTotal = questions.length;
   const currentQuestion = questions[currentIndex];
-  const paywalled = !hasAccess && currentIndex >= previewLimit;
+  const paywalled = !!user && !hasAccess;
   const progress = ((Math.min(currentIndex, effectiveTotal) + (submitted ? 1 : 0)) / effectiveTotal) * 100;
 
   // Start or resume an attempt for authenticated + full-access users.
@@ -196,7 +196,7 @@ function QuizPage() {
     }
   };
 
-  // Paywall interstitial — user hit the free preview cap.
+  // Paywall — user is signed in but doesn't own this track and this isn't the free sample.
   if (paywalled && !submitted) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
@@ -205,21 +205,17 @@ function QuizPage() {
             <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Lock className="h-7 w-7" />
             </div>
-            <h1 className="text-2xl font-bold">You've hit the free preview limit</h1>
+            <h1 className="text-2xl font-bold">This exam is locked</h1>
             <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-              You've answered the first {previewLimit} questions of this exam. Unlock full
-              access to finish this exam and every other exam in this track.
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Your progress so far is saved — you can pick up right where you left off after upgrading.
+              Unlock full access to this exam and every other exam in this track.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Button size="lg" onClick={handleUnlock} disabled={checkingOut}>
                 {checkingOut ? "Loading..." : "Unlock Full Access"}
               </Button>
-              <Button size="lg" variant="outline" onClick={handleSubmit} disabled={saving}>
-                {saving ? "Saving..." : "See My Preview Score"}
-              </Button>
+              <Link to="/exams">
+                <Button size="lg" variant="outline">Back to Exams</Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
@@ -238,13 +234,11 @@ function QuizPage() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold">
-            {hasAccess ? "Quiz Complete" : "Preview Complete"}
-          </h1>
+          <h1 className="text-3xl font-bold">Quiz Complete</h1>
           <p className="mt-2 text-lg text-muted-foreground">
             You scored {score} out of {gradeable.length}
           </p>
-          {!hasAccess && (
+          {isSample && !purchased && (
             <div className="mt-4">
               <Button onClick={handleUnlock} disabled={checkingOut}>
                 {checkingOut ? "Loading..." : "Unlock Full Access"}
@@ -314,9 +308,9 @@ function QuizPage() {
       <div className="mb-6 flex items-center justify-between">
         <span className="text-sm text-muted-foreground">
           Question {currentIndex + 1} of {effectiveTotal}
-          {!hasAccess && (
+          {isSample && !purchased && (
             <span className="ml-2 text-xs uppercase tracking-wide text-primary">
-              · Free Preview
+              · Free Sample
             </span>
           )}
         </span>
@@ -416,7 +410,7 @@ function QuizPage() {
             onClick={handleSubmit}
             disabled={!selectedAnswers[currentQuestion.id] || saving}
           >
-            {saving ? "Saving..." : hasAccess ? "Submit Quiz" : "Finish Preview"}
+            {saving ? "Saving..." : "Submit Quiz"}
           </Button>
         ) : (
           <Button

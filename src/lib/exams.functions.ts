@@ -12,8 +12,6 @@ export const CATEGORY_PRODUCT_IDS: Record<string, string> = {
   life_health_insurance: "life_health_exam",
 };
 
-// Number of preview questions any signed-in user gets before the paywall.
-export const FREEMIUM_PREVIEW_COUNT = 10;
 
 function getPublicClient() {
   return createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {

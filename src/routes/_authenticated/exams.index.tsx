@@ -218,7 +218,9 @@ function ExamResults({
 
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      {data.map((exam) => (
+      {data.map((exam) => {
+        const accessible = unlocked || exam.is_sample;
+        return (
         <Card key={exam.id} className="flex flex-col">
           <CardHeader>
             <div className="flex items-start justify-between gap-2">
@@ -226,7 +228,13 @@ function ExamResults({
                 {exam.exam_number ? `#${exam.exam_number} · ` : ""}
                 {exam.title}
               </CardTitle>
-              {unlocked ? <Badge>Unlocked</Badge> : <Badge variant="secondary">Free preview</Badge>}
+              {unlocked ? (
+                <Badge>Unlocked</Badge>
+              ) : exam.is_sample ? (
+                <Badge variant="secondary">Free Sample</Badge>
+              ) : (
+                <Badge variant="outline">Paid</Badge>
+              )}
             </div>
           </CardHeader>
           <CardContent className="mt-auto space-y-3">
@@ -240,15 +248,16 @@ function ExamResults({
             </p>
             <div className="flex flex-wrap gap-2">
               <Link to="/exams/$slug" params={{ slug: exam.slug }}>
-                <Button size="sm">
+                <Button size="sm" variant={accessible ? "default" : "outline"}>
                   <PlayCircle className="mr-2 h-4 w-4" />
-                  {unlocked ? "Start" : "Free preview"}
+                  {accessible ? "Start" : "View details"}
                 </Button>
               </Link>
             </div>
           </CardContent>
         </Card>
-      ))}
+        );
+      })}
     </div>
   );
 }

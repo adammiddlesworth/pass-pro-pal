@@ -21,8 +21,10 @@ export type ExamSearchResult = {
   question_count: number;
   exam_number: number | null;
   youtube_video_id: string | null;
+  is_sample: boolean;
   tags: string[];
 };
+
 
 export const searchExams = createServerFn({ method: "GET" })
   .inputValidator((data: { category: string; q?: string; topic?: string; limit?: number }) => data)
@@ -46,7 +48,7 @@ export const searchExams = createServerFn({ method: "GET" })
     let query = supabase
       .from("exams")
       .select(
-        "id, slug, title, description, category, question_count, exam_number, youtube_video_id, exam_tags(tag)"
+        "id, slug, title, description, category, question_count, exam_number, youtube_video_id, is_sample, exam_tags(tag)"
       )
       .eq("status", "published")
       .eq("category", data.category as any)
@@ -76,13 +78,14 @@ export const searchExams = createServerFn({ method: "GET" })
       question_count: r.question_count,
       exam_number: r.exam_number,
       youtube_video_id: r.youtube_video_id,
+      is_sample: !!r.is_sample,
       tags: (r.exam_tags || []).map((t: any) => t.tag),
     }));
 
     if (q && !topic) {
       const { data: tagged, error: tagErr } = await supabase
         .from("exam_tags")
-        .select("exam_id, exams!inner(id, slug, title, description, category, question_count, exam_number, youtube_video_id, status)")
+        .select("exam_id, exams!inner(id, slug, title, description, category, question_count, exam_number, youtube_video_id, is_sample, status)")
         .ilike("tag", `%${q}%`)
         .eq("exams.status", "published")
         .eq("exams.category", data.category as any)
@@ -102,6 +105,7 @@ export const searchExams = createServerFn({ method: "GET" })
             question_count: e.question_count,
             exam_number: e.exam_number,
             youtube_video_id: e.youtube_video_id,
+            is_sample: !!e.is_sample,
             tags: [],
           });
         }
