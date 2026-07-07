@@ -482,3 +482,94 @@ export const touchStreak = createServerFn({ method: "POST" })
     return { current_streak: current, best_streak: best };
   });
 
+// ---------- Exam-day readiness ----------
+
+import { calculateReadiness, type ReadinessResult } from "./readiness";
+
+export const getReadiness = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { category: string }) => data)
+  .handler(async ({ data, context }): Promise<ReadinessResult> => {
+    const { supabase, userId } = context;
+    const category = data.category;
+
+    const { data: attempts } = await supabase
+      .from("user_attempts")
+      .select("score, total, completed_at, exams!inner(category)")
+      .eq("user_id", userId)
+      .eq("exams.category", category as any)
+      .not("completed_at", "is", null)
+      .order("completed_at", { ascending: false })
+      .limit(5);
+
+    const recentExams = ((attempts || []) as any[])
+      .filter((a) => a.total > 0 && a.score !== null)
+      .map((a) => ({
+        pct: (a.score / a.total) * 100,
+        completed_at: a.completed_at as string,
+      }));
+
+    const { data: answerRows } = await supabase
+      .from("user_answers")
+      .select(
+        "is_correct, questions!inner(exam_id, exams!inner(category, exam_tags(tag)))"
+      )
+      .eq("questions.exams.category", category as any);
+
+    const topicAgg = new Map<string, { correct: number; total: number }>();
+    for (const r of (answerRows || []) as any[]) {
+      const tags: string[] = (r.questions?.exams?.exam_tags || []).map((t: any) => t.tag);
+      for (const tag of tags) {
+        const s = topicAgg.get(tag) ?? { correct: 0, total: 0 };
+        s.total += 1;
+        if (r.is_correct) s.correct += 1;
+        topicAgg.set(tag, s);
+      }
+    }
+
+    const topicDefs = getTopicsForCategory(category);
+    const topics = topicDefs
+      .map((t) => {
+        const s = topicAgg.get(t.slug);
+        if (!s || s.total === 0) return null;
+        return {
+          slug: t.slug,
+          label: t.label,
+          total: s.total,
+          pct: (s.correct / s.total) * 100,
+        };
+      })
+      .filter(Boolean) as { slug: string; label: string; total: number; pct: number }[];
+
+    const { data: examsInCat } = await supabase
+      .from("exams")
+      .select("id, question_count")
+      .eq("status", "published")
+      .eq("category", category as any);
+    const examIds = (examsInCat || []).map((e: any) => e.id);
+    const questionsTotal = (examsInCat || []).reduce(
+      (s: number, e: any) => s + (e.question_count || 0),
+      0
+    );
+    let questionsAnswered = 0;
+    if (examIds.length > 0) {
+      const { count } = await supabase
+        .from("user_answers")
+        .select("id, user_attempts!inner(user_id, exam_id)", { count: "exact", head: true })
+        .eq("user_attempts.user_id", userId)
+        .in("user_attempts.exam_id", examIds);
+      questionsAnswered = count ?? 0;
+    }
+    const coveragePct = questionsTotal > 0 ? (questionsAnswered / questionsTotal) * 100 : 0;
+
+    const { data: streakRow } = await supabase
+      .from("user_streaks")
+      .select("current_streak")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const streakDays = streakRow?.current_streak ?? 0;
+
+    return calculateReadiness({ recentExams, topics, coveragePct, streakDays });
+  });
+
+
