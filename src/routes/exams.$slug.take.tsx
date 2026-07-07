@@ -410,7 +410,7 @@ function QuizPage() {
             onClick={handleSubmit}
             disabled={!selectedAnswers[currentQuestion.id] || saving}
           >
-            {saving ? "Saving..." : hasAccess ? "Submit Quiz" : "Finish Preview"}
+            {saving ? "Saving..." : "Submit Quiz"}
           </Button>
         ) : (
           <Button
