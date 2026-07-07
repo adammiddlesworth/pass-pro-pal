@@ -1,30 +1,32 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { format } from "date-fns";
 import {
   PlayCircle,
-  ClipboardCheck,
-  BarChart3,
-  Target,
   Flame,
-  AlertTriangle,
   RefreshCw,
   ArrowRight,
-  TrendingUp,
+  BarChart3,
+  Sparkles,
+  Target,
+  CalendarIcon,
 } from "lucide-react";
 import { useAuth } from "@/hooks/use-auth";
 import { getActiveTrack } from "@/lib/track.functions";
-import { getUserCategoryAccess } from "@/lib/exams.functions";
 import {
-  getDashboardStats,
   getUpNext,
   getStreak,
   getRecentActivity,
   getReadiness,
 } from "@/lib/dashboard.functions";
-import type { ReadinessResult } from "@/lib/readiness";
+import { updateTestDate } from "@/lib/profile.functions";
+import type { DashboardReadiness } from "@/lib/dashboard.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
@@ -40,6 +42,14 @@ function greeting() {
   if (h < 12) return "Good morning";
   if (h < 18) return "Good afternoon";
   return "Good evening";
+}
+
+function daysUntil(dateStr: string): number {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(dateStr + "T00:00:00");
+  const diff = Math.round((target.getTime() - today.getTime()) / (24 * 60 * 60 * 1000));
+  return diff;
 }
 
 function DashboardPage() {
@@ -84,12 +94,15 @@ function DashboardPage() {
         </div>
       </div>
 
-      <UpNextCard category={cat} />
-      <StatsRow category={cat} />
+      <ReadinessHero category={cat} />
+
+      <div className="mt-6">
+        <UpNextCard category={cat} />
+      </div>
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <StreakCard />
-        <WeaknessCard category={cat} unlocked={!!trackInfo.hasFullAccess} />
+        <PersonalizedReviewCard category={cat} unlocked={!!trackInfo.hasFullAccess} />
       </div>
 
       <div className="mt-6">
@@ -106,11 +119,11 @@ function UpNextCard({ category }: { category: string }) {
   });
 
   if (isLoading) {
-    return <Card className="mb-6 h-32 animate-pulse bg-muted/40" />;
+    return <Card className="h-32 animate-pulse bg-muted/40" />;
   }
   if (!data || data.kind === "none") {
     return (
-      <Card className="mb-6 border-primary/30 bg-primary/5">
+      <Card className="border-primary/30 bg-primary/5">
         <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
           <div>
             <p className="text-xs font-semibold uppercase tracking-wider text-primary">Up next</p>
@@ -126,10 +139,10 @@ function UpNextCard({ category }: { category: string }) {
   }
 
   const label =
-    data.kind === "resume" ? "Resume" : data.kind === "retake" ? "Retake" : "Start exam";
+    data.kind === "resume" ? "Resume" : data.kind === "retake" ? "Retake" : "Start";
 
   return (
-    <Card className="mb-6 border-primary/30 bg-primary/5">
+    <Card className="border-primary/30 bg-primary/5">
       <CardContent className="flex flex-wrap items-center justify-between gap-4 p-6">
         <div className="flex items-start gap-4">
           <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -158,91 +171,52 @@ function UpNextCard({ category }: { category: string }) {
   );
 }
 
-function StatsRow({ category }: { category: string }) {
-  const { data } = useQuery({
-    queryKey: ["dashboard-stats", category],
-    queryFn: () => getDashboardStats({ data: { category } }),
-  });
-  const stats = data ?? {
-    exams_taken: 0,
-    exams_taken_week: 0,
-    avg_score_pct: null,
-    avg_score_delta_pct: null,
-    questions_answered: 0,
-    questions_total: 0,
-  };
-
-  return (
-    <div className="grid gap-4 sm:grid-cols-3">
-      <StatCard
-        icon={ClipboardCheck}
-        label="Exams taken"
-        value={String(stats.exams_taken)}
-        sub={
-          stats.exams_taken_week > 0
-            ? { text: `${stats.exams_taken_week} this week`, positive: true }
-            : { text: "None this week", positive: false }
-        }
-      />
-      <ReadinessCard category={category} />
-      <StatCard
-        icon={Target}
-        label="Questions answered"
-        value={String(stats.questions_answered)}
-        sub={{ text: `of ${stats.questions_total} total`, positive: null }}
-      />
-    </div>
-  );
+function colorMeta(color: DashboardReadiness["color"]) {
+  return color === "green"
+    ? { text: "text-emerald-500", stroke: "stroke-emerald-500", pill: "bg-emerald-500/15 text-emerald-500", ring: "ring-emerald-500/30" }
+    : color === "amber"
+      ? { text: "text-amber-500", stroke: "stroke-amber-500", pill: "bg-amber-500/15 text-amber-500", ring: "ring-amber-500/30" }
+      : { text: "text-rose-500", stroke: "stroke-rose-500", pill: "bg-rose-500/15 text-rose-500", ring: "ring-rose-500/30" };
 }
 
-function ReadinessCard({ category }: { category: string }) {
+function ReadinessHero({ category }: { category: string }) {
   const { data, isLoading } = useQuery({
     queryKey: ["readiness", category],
     queryFn: () => getReadiness({ data: { category } }),
   });
 
-  const colorMeta = (color: ReadinessResult["color"]) =>
-    color === "green"
-      ? { text: "text-emerald-500", stroke: "stroke-emerald-500", pill: "bg-emerald-500/15 text-emerald-500" }
-      : color === "amber"
-        ? { text: "text-amber-500", stroke: "stroke-amber-500", pill: "bg-amber-500/15 text-amber-500" }
-        : { text: "text-rose-500", stroke: "stroke-rose-500", pill: "bg-rose-500/15 text-rose-500" };
-
   const score = data?.readiness ?? 0;
   const meta = colorMeta(data?.color ?? "red");
   const hasData = !!data && data.breakdown.recent > 0;
-  const radius = 42;
+  const radius = 46;
   const circ = 2 * Math.PI * radius;
   const offset = circ * (1 - Math.min(100, Math.max(0, score)) / 100);
 
+  const bd = data?.breakdown;
+  const breakdownTooltip = bd
+    ? `Recent ${bd.recent} · Coverage ${bd.coverage} · Weak spots ${bd.weakSpotScore} · Consistency ${bd.consistency}`
+    : undefined;
 
   return (
     <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <BarChart3 className="h-4 w-4" />
-          Exam-Day Readiness
-        </div>
+      <CardContent className="p-6">
         {isLoading ? (
-          <div className="mt-3 h-[120px] animate-pulse rounded bg-muted/40" />
+          <div className="h-[180px] animate-pulse rounded bg-muted/40" />
         ) : (
-          <div className="mt-3 flex items-center gap-4">
-            <div className="relative h-[104px] w-[104px] shrink-0">
+          <div className="flex flex-col gap-6 sm:flex-row sm:items-center">
+            {/* Ring */}
+            <div
+              className="relative h-[144px] w-[144px] shrink-0"
+              title={breakdownTooltip}
+            >
               <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                <circle cx="50" cy="50" r={radius} fill="none" strokeWidth="8" className="stroke-muted" />
                 <circle
                   cx="50"
                   cy="50"
                   r={radius}
                   fill="none"
-                  strokeWidth="10"
-                  className="stroke-muted"
-                />
-                <circle
-                  cx="50"
-                  cy="50"
-                  r={radius}
-                  fill="none"
-                  strokeWidth="10"
+                  strokeWidth="8"
                   strokeLinecap="round"
                   className={hasData ? meta.stroke : "stroke-muted"}
                   strokeDasharray={circ}
@@ -251,87 +225,170 @@ function ReadinessCard({ category }: { category: string }) {
                 />
               </svg>
               <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
-                <span className={`text-2xl font-bold leading-none ${hasData ? meta.text : "text-muted-foreground"}`}>
+                <span className={`text-4xl font-bold leading-none ${hasData ? "text-foreground" : "text-muted-foreground"}`}>
                   {hasData ? score : "—"}
                 </span>
-                <span className="mt-0.5 text-[10px] text-muted-foreground">/ 100</span>
+                <span className="mt-1 text-xs text-muted-foreground">/ 100</span>
               </div>
             </div>
+
+            {/* Right column */}
             <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                <BarChart3 className="h-3.5 w-3.5" />
+                Exam-Day Readiness
+              </div>
               {hasData && data && (
-                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${meta.pill}`}>
-                  {data.status}
-                </span>
+                <div className="mt-2">
+                  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${meta.pill}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full bg-current`} />
+                    {data.status}
+                  </span>
+                </div>
               )}
-              <p className="mt-2 text-xs leading-snug text-muted-foreground">
+              <p className="mt-3 text-sm leading-snug text-muted-foreground">
                 {data?.reason ?? "Take an exam to get your first readiness score."}
               </p>
+
+              <div className="mt-4 border-t border-border pt-4">
+                <div className="grid grid-cols-3 gap-4">
+                  <MiniStat
+                    value={data?.recentAvgPct !== null && data?.recentAvgPct !== undefined ? `${data.recentAvgPct}%` : "—"}
+                    label="Recent avg"
+                    tone={
+                      data?.recentAvgPct === null || data?.recentAvgPct === undefined
+                        ? "muted"
+                        : data.recentAvgPct >= 80
+                          ? "emerald"
+                          : data.recentAvgPct >= 65
+                            ? "amber"
+                            : "rose"
+                    }
+                  />
+                  <MiniStat
+                    value={data ? `${data.topicsPracticed}/${data.topicsTotal}` : "—"}
+                    label="Topics covered"
+                    tone={
+                      !data
+                        ? "muted"
+                        : data.topicsPracticed >= data.topicsTotal * 0.8
+                          ? "emerald"
+                          : data.topicsPracticed >= data.topicsTotal * 0.5
+                            ? "amber"
+                            : "rose"
+                    }
+                  />
+                  <TestDateStat testDate={data?.testDate ?? null} category={category} />
+                </div>
+              </div>
             </div>
           </div>
         )}
-        {hasData && data && (
-          <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-border pt-3 text-xs">
-            {(
-              [
-                ["Recent", data.breakdown.recent],
-                ["Coverage", data.breakdown.coverage],
-                ["Weak spots", data.breakdown.weakSpotScore],
-                ["Consistency", data.breakdown.consistency],
-              ] as const
-            ).map(([label, v]) => {
-              const c =
-                v >= 80 ? "text-emerald-500" : v >= 65 ? "text-amber-500" : "text-rose-500";
-              return (
-                <div key={label} className="flex items-baseline justify-between gap-2">
-                  <span className="text-muted-foreground">{label === "Recent" ? "Recent\u00a0" : label}</span>
-                  <span className={`font-semibold tabular-nums ${c}`}>{v}</span>
-                </div>
-              );
-            })}
-          </div>
-        )}
-
       </CardContent>
     </Card>
   );
 }
 
-
-function StatCard({
-  icon: Icon,
-  label,
+function MiniStat({
   value,
-  sub,
+  label,
+  tone = "default",
 }: {
-  icon: any;
-  label: string;
   value: string;
-  sub: { text: string; positive: boolean | null } | null;
+  label: string;
+  tone?: "default" | "emerald" | "amber" | "rose" | "muted";
 }) {
+  const toneClass =
+    tone === "emerald"
+      ? "text-emerald-500"
+      : tone === "amber"
+        ? "text-amber-500"
+        : tone === "rose"
+          ? "text-rose-500"
+          : tone === "muted"
+            ? "text-muted-foreground"
+            : "text-foreground";
   return (
-    <Card>
-      <CardContent className="p-5">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Icon className="h-4 w-4" />
-          {label}
+    <div>
+      <div className={`text-xl font-bold tabular-nums ${toneClass}`}>{value}</div>
+      <div className="text-xs text-muted-foreground">{label}</div>
+    </div>
+  );
+}
+
+function TestDateStat({ testDate, category }: { testDate: string | null; category: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+
+  const handleSelect = async (d: Date | undefined) => {
+    if (!d) return;
+    const iso = format(d, "yyyy-MM-dd");
+    await updateTestDate({ data: { date: iso } });
+    setOpen(false);
+    qc.invalidateQueries({ queryKey: ["readiness", category] });
+  };
+
+  const handleClear = async () => {
+    await updateTestDate({ data: { date: null } });
+    setOpen(false);
+    qc.invalidateQueries({ queryKey: ["readiness", category] });
+  };
+
+  if (!testDate) {
+    return (
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          <button className="text-left">
+            <div className="flex items-center gap-1 text-sm font-semibold text-primary hover:underline">
+              <CalendarIcon className="h-4 w-4" />
+              Set date
+            </div>
+            <div className="text-xs text-muted-foreground">Until test</div>
+          </button>
+        </PopoverTrigger>
+        <PopoverContent className="w-auto p-0" align="start">
+          <Calendar
+            mode="single"
+            onSelect={handleSelect}
+            initialFocus
+            disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+            className={cn("p-3 pointer-events-auto")}
+          />
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  const days = daysUntil(testDate);
+  const tone =
+    days <= 7 ? "text-rose-500" : days <= 30 ? "text-amber-500" : "text-foreground";
+  const valueLabel =
+    days < 0 ? "Passed" : days === 0 ? "Today" : days === 1 ? "1 day" : `${days} days`;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button className="text-left">
+          <div className={`text-xl font-bold tabular-nums ${tone} hover:underline`}>{valueLabel}</div>
+          <div className="text-xs text-muted-foreground">Until test · {format(new Date(testDate + "T00:00:00"), "MMM d")}</div>
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="single"
+          selected={new Date(testDate + "T00:00:00")}
+          onSelect={handleSelect}
+          initialFocus
+          disabled={(d) => d < new Date(new Date().setHours(0, 0, 0, 0))}
+          className={cn("p-3 pointer-events-auto")}
+        />
+        <div className="border-t p-2">
+          <Button variant="ghost" size="sm" className="w-full" onClick={handleClear}>
+            Clear date
+          </Button>
         </div>
-        <div className="mt-2 text-4xl font-bold tracking-tight">{value}</div>
-        {sub && (
-          <div
-            className={`mt-2 flex items-center gap-1 text-xs ${
-              sub.positive === true
-                ? "text-emerald-500"
-                : sub.positive === false
-                  ? "text-muted-foreground"
-                  : "text-muted-foreground"
-            }`}
-          >
-            {sub.positive === true && <TrendingUp className="h-3 w-3" />}
-            {sub.text}
-          </div>
-        )}
-      </CardContent>
-    </Card>
+      </PopoverContent>
+    </Popover>
   );
 }
 
@@ -339,7 +396,7 @@ function StreakCard() {
   const { data } = useQuery({ queryKey: ["streak"], queryFn: () => getStreak() });
   const days = data?.week_activity ?? Array(7).fill(false);
   const labels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
-  const today = new Date().getDay(); // 0 = Sunday
+  const today = new Date().getDay();
 
   return (
     <Card>
@@ -370,36 +427,33 @@ function StreakCard() {
                   }`}
                   title={isToday ? "Today" : labels[i]}
                 >
-                  {isToday ? "Today" : active ? "✓" : labels[i]}
+                  {isToday ? "T" : active ? "✓" : labels[i]}
                 </div>
               );
             })}
           </div>
         </div>
         <p className="mt-4 text-xs text-muted-foreground">
-          Best streak: {data?.best_streak ?? 0} days
-          {data?.streak_start_date ? ` · Started ${data.streak_start_date}` : ""}.
+          Best streak: {data?.best_streak ?? 0} days · Don't break the chain!
         </p>
       </CardContent>
     </Card>
   );
 }
 
-function WeaknessCard({ category, unlocked }: { category: string; unlocked: boolean }) {
-  const { data: stats } = useQuery({
-    queryKey: ["dashboard-stats", category],
-    queryFn: () => getDashboardStats({ data: { category } }),
+function PersonalizedReviewCard({ category, unlocked }: { category: string; unlocked: boolean }) {
+  const { data } = useQuery({
+    queryKey: ["readiness", category],
+    queryFn: () => getReadiness({ data: { category } }),
   });
-  const avg = stats?.avg_score_pct ?? null;
-  const pass = 70;
-  const needsWork = avg !== null && avg < pass;
+  const weakest = data?.weakestTopics ?? [];
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          <AlertTriangle className="h-5 w-5 text-rose-500" />
-          Weakness exam
+          <Sparkles className="h-5 w-5 text-primary" />
+          Personalized review
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -414,7 +468,7 @@ function WeaknessCard({ category, unlocked }: { category: string; unlocked: bool
               </Button>
             </Link>
           </div>
-        ) : avg === null ? (
+        ) : weakest.length === 0 ? (
           <div className="space-y-3">
             <p className="text-sm text-muted-foreground">
               Complete a few exams and we'll surface the areas that need the most attention.
@@ -427,26 +481,32 @@ function WeaknessCard({ category, unlocked }: { category: string; unlocked: bool
           </div>
         ) : (
           <div>
-            <div className="flex items-baseline justify-between text-sm">
-              <span className="font-semibold">Your avg: {avg}%</span>
-              <span className="text-muted-foreground">Pass mark: {pass}%</span>
+            <div className="flex items-start gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                <Target className="h-5 w-5" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold">Your review session</p>
+                <p className="text-xs text-muted-foreground">Built from your weak spots</p>
+              </div>
             </div>
-            <div className="mt-2 h-2 overflow-hidden rounded-full bg-muted">
-              <div
-                className={`h-full ${needsWork ? "bg-rose-500" : "bg-emerald-500"}`}
-                style={{ width: `${Math.min(100, avg)}%` }}
-              />
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              {needsWork
-                ? "You're below the pass mark — retake weak questions to close the gap."
-                : "You're above the pass mark. A weakness review keeps you sharp."}
-            </p>
+            <ul className="mt-4 space-y-2">
+              {weakest.map((t) => {
+                const tone =
+                  t.score >= 80 ? "text-emerald-500" : t.score >= 65 ? "text-amber-500" : "text-rose-500";
+                return (
+                  <li key={t.slug} className="flex items-baseline justify-between gap-2 text-sm">
+                    <span className="truncate text-foreground">{t.name}</span>
+                    <span className={`font-semibold tabular-nums ${tone}`}>{t.score}%</span>
+                  </li>
+                );
+              })}
+            </ul>
             <div className="mt-4">
               <Link to="/review/$category" params={{ category }}>
                 <Button variant="outline" size="sm" className="w-full">
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  Retake weakness exam
+                  Start review session
                 </Button>
               </Link>
             </div>

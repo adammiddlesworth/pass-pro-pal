@@ -489,10 +489,18 @@ import { calculateReadiness, type ReadinessResult } from "./readiness";
 const PASS_MARK = 70;
 const PSEUDO_TOPICS = new Set(["mixed", "final-exam-practice"]);
 
+export type DashboardReadiness = ReadinessResult & {
+  recentAvgPct: number | null;
+  topicsPracticed: number;
+  topicsTotal: number;
+  weakestTopics: { slug: string; name: string; score: number }[];
+  testDate: string | null;
+};
+
 export const getReadiness = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { category: string }) => data)
-  .handler(async ({ data, context }): Promise<ReadinessResult> => {
+  .handler(async ({ data, context }): Promise<DashboardReadiness> => {
     const { supabase, userId } = context;
     const category = data.category;
 
@@ -510,6 +518,11 @@ export const getReadiness = createServerFn({ method: "GET" })
       .filter((a) => a.total > 0 && a.score !== null)
       .map((a) => ({ score: (a.score / a.total) * 100 }))
       .reverse();
+
+    const recentAvgPct =
+      recentExams.length > 0
+        ? Math.round(recentExams.reduce((s, e) => s + e.score, 0) / recentExams.length)
+        : null;
 
     // Per-topic accuracy.
     const { data: answerRows } = await supabase
@@ -533,21 +546,43 @@ export const getReadiness = createServerFn({ method: "GET" })
 
     const topicDefs = getTopicsForCategory(category).filter((t) => !PSEUDO_TOPICS.has(t.slug));
     const totalTopics = Math.max(1, topicDefs.length);
-    const topics = topicDefs
+    const practicedTopics = topicDefs
       .map((t) => {
         const s = topicAgg.get(t.slug);
         if (!s || s.total < 5) return null;
-        return { name: t.label, score: (s.correct / s.total) * 100 };
+        return { slug: t.slug, name: t.label, score: (s.correct / s.total) * 100 };
       })
-      .filter(Boolean) as { name: string; score: number }[];
+      .filter(Boolean) as { slug: string; name: string; score: number }[];
 
-    return calculateReadiness({
+    const base = calculateReadiness({
       passMark: PASS_MARK,
       totalTopics,
       recentExams,
-      topics,
+      topics: practicedTopics.map((t) => ({ name: t.name, score: t.score })),
     });
+
+    // Fetch exam date from profile.
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("test_date")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const weakestTopics = [...practicedTopics]
+      .sort((a, b) => a.score - b.score)
+      .slice(0, 3)
+      .map((t) => ({ slug: t.slug, name: t.name, score: Math.round(t.score) }));
+
+    return {
+      ...base,
+      recentAvgPct,
+      topicsPracticed: practicedTopics.length,
+      topicsTotal: topicDefs.length,
+      weakestTopics,
+      testDate: (profile as any)?.test_date ?? null,
+    };
   });
+
 
 
 
