@@ -7,7 +7,6 @@ import {
   getExamQuestions,
   getUserCategoryAccess,
   CATEGORY_PRODUCT_IDS,
-  FREEMIUM_PREVIEW_COUNT,
 } from "@/lib/exams.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
