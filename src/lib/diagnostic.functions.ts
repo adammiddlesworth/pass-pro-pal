@@ -59,8 +59,10 @@ export const startDiagnostic = createServerFn({ method: "POST" })
     const weekStart = currentWeekStart();
     const seed = `${userId}:${category}:${weekStart}`;
 
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
     // Pull all published exams in category with tags.
-    const { data: exams, error: examsErr } = await supabase
+    const { data: exams, error: examsErr } = await supabaseAdmin
       .from("exams")
       .select("id, exam_tags(tag)")
       .eq("status", "published")
@@ -81,7 +83,7 @@ export const startDiagnostic = createServerFn({ method: "POST" })
     const allExamIds = Array.from(new Set(((exams || []) as any[]).map((e) => e.id)));
     if (allExamIds.length === 0) throw new Error("No exams available for this category");
 
-    const { data: allQuestions, error: qErr } = await supabase
+    const { data: allQuestions, error: qErr } = await supabaseAdmin
       .from("questions")
       .select("id, exam_id, text, explanation, answers(id, text, is_correct)")
       .in("exam_id", allExamIds);
