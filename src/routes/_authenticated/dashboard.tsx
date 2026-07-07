@@ -184,21 +184,7 @@ function StatsRow({ category }: { category: string }) {
             : { text: "None this week", positive: false }
         }
       />
-      <StatCard
-        icon={BarChart3}
-        label="Avg score"
-        value={stats.avg_score_pct !== null ? `${stats.avg_score_pct}%` : "—"}
-        sub={
-          stats.avg_score_delta_pct !== null
-            ? {
-                text: `${stats.avg_score_delta_pct >= 0 ? "Up" : "Down"} ${Math.abs(
-                  stats.avg_score_delta_pct
-                )}% this month`,
-                positive: stats.avg_score_delta_pct >= 0,
-              }
-            : null
-        }
-      />
+      <ReadinessCard category={category} />
       <StatCard
         icon={Target}
         label="Questions answered"
@@ -208,6 +194,85 @@ function StatsRow({ category }: { category: string }) {
     </div>
   );
 }
+
+function ReadinessCard({ category }: { category: string }) {
+  const { data, isLoading } = useQuery({
+    queryKey: ["readiness", category],
+    queryFn: () => getReadiness({ data: { category } }),
+  });
+
+  const bandMeta = (band: ReadinessResult["band"]) =>
+    band === "ready"
+      ? { label: "Ready", color: "text-emerald-500", stroke: "stroke-emerald-500", pill: "bg-emerald-500/15 text-emerald-500" }
+      : band === "almost"
+        ? { label: "Almost there", color: "text-amber-500", stroke: "stroke-amber-500", pill: "bg-amber-500/15 text-amber-500" }
+        : { label: "Not ready yet", color: "text-rose-500", stroke: "stroke-rose-500", pill: "bg-rose-500/15 text-rose-500" };
+
+  const score = data?.score ?? 0;
+  const meta = bandMeta(data?.band ?? "not_ready");
+  const hasData = !!data && (data.recentAvgPct !== null);
+  const radius = 42;
+  const circ = 2 * Math.PI * radius;
+  const offset = circ * (1 - Math.min(100, Math.max(0, score)) / 100);
+
+  return (
+    <Card>
+      <CardContent className="p-5">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <BarChart3 className="h-4 w-4" />
+          Exam-day readiness (estimate)
+        </div>
+        {isLoading ? (
+          <div className="mt-3 h-[120px] animate-pulse rounded bg-muted/40" />
+        ) : (
+          <div className="mt-3 flex items-center gap-4">
+            <div className="relative h-[104px] w-[104px] shrink-0">
+              <svg viewBox="0 0 100 100" className="h-full w-full -rotate-90">
+                <circle
+                  cx="50"
+                  cy="50"
+                  r={radius}
+                  fill="none"
+                  strokeWidth="10"
+                  className="stroke-muted"
+                />
+                <circle
+                  cx="50"
+                  cy="50"
+                  r={radius}
+                  fill="none"
+                  strokeWidth="10"
+                  strokeLinecap="round"
+                  className={hasData ? meta.stroke : "stroke-muted"}
+                  strokeDasharray={circ}
+                  strokeDashoffset={hasData ? offset : circ}
+                  style={{ transition: "stroke-dashoffset 600ms ease" }}
+                />
+              </svg>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
+                <span className={`text-2xl font-bold leading-none ${hasData ? meta.color : "text-muted-foreground"}`}>
+                  {hasData ? score : "—"}
+                </span>
+                <span className="mt-0.5 text-[10px] text-muted-foreground">/ 100</span>
+              </div>
+            </div>
+            <div className="min-w-0 flex-1">
+              {hasData && (
+                <span className={`inline-flex rounded-full px-2 py-0.5 text-xs font-semibold ${meta.pill}`}>
+                  {meta.label}
+                </span>
+              )}
+              <p className="mt-2 text-xs leading-snug text-muted-foreground">
+                {data?.reason ?? "Take an exam to get your first readiness score."}
+              </p>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 
 function StatCard({
   icon: Icon,
