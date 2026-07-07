@@ -234,13 +234,11 @@ function QuizPage() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <div className="mb-6 text-center">
-          <h1 className="text-3xl font-bold">
-            {hasAccess ? "Quiz Complete" : "Preview Complete"}
-          </h1>
+          <h1 className="text-3xl font-bold">Quiz Complete</h1>
           <p className="mt-2 text-lg text-muted-foreground">
             You scored {score} out of {gradeable.length}
           </p>
-          {!hasAccess && (
+          {isSample && !purchased && (
             <div className="mt-4">
               <Button onClick={handleUnlock} disabled={checkingOut}>
                 {checkingOut ? "Loading..." : "Unlock Full Access"}
