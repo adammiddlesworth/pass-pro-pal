@@ -486,6 +486,9 @@ export const touchStreak = createServerFn({ method: "POST" })
 
 import { calculateReadiness, type ReadinessResult } from "./readiness";
 
+const PASS_MARK = 70;
+const PSEUDO_TOPICS = new Set(["mixed", "final-exam-practice"]);
+
 export const getReadiness = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((data: { category: string }) => data)
@@ -493,6 +496,7 @@ export const getReadiness = createServerFn({ method: "GET" })
     const { supabase, userId } = context;
     const category = data.category;
 
+    // Last 8 completed attempts, then reverse to OLDEST -> NEWEST.
     const { data: attempts } = await supabase
       .from("user_attempts")
       .select("score, total, completed_at, exams!inner(category)")
@@ -500,15 +504,14 @@ export const getReadiness = createServerFn({ method: "GET" })
       .eq("exams.category", category as any)
       .not("completed_at", "is", null)
       .order("completed_at", { ascending: false })
-      .limit(5);
+      .limit(8);
 
     const recentExams = ((attempts || []) as any[])
       .filter((a) => a.total > 0 && a.score !== null)
-      .map((a) => ({
-        pct: (a.score / a.total) * 100,
-        completed_at: a.completed_at as string,
-      }));
+      .map((a) => ({ score: (a.score / a.total) * 100 }))
+      .reverse();
 
+    // Per-topic accuracy.
     const { data: answerRows } = await supabase
       .from("user_answers")
       .select(
@@ -520,6 +523,7 @@ export const getReadiness = createServerFn({ method: "GET" })
     for (const r of (answerRows || []) as any[]) {
       const tags: string[] = (r.questions?.exams?.exam_tags || []).map((t: any) => t.tag);
       for (const tag of tags) {
+        if (PSEUDO_TOPICS.has(tag)) continue;
         const s = topicAgg.get(tag) ?? { correct: 0, total: 0 };
         s.total += 1;
         if (r.is_correct) s.correct += 1;
@@ -527,49 +531,23 @@ export const getReadiness = createServerFn({ method: "GET" })
       }
     }
 
-    const topicDefs = getTopicsForCategory(category);
+    const topicDefs = getTopicsForCategory(category).filter((t) => !PSEUDO_TOPICS.has(t.slug));
+    const totalTopics = Math.max(1, topicDefs.length);
     const topics = topicDefs
       .map((t) => {
         const s = topicAgg.get(t.slug);
-        if (!s || s.total === 0) return null;
-        return {
-          slug: t.slug,
-          label: t.label,
-          total: s.total,
-          pct: (s.correct / s.total) * 100,
-        };
+        if (!s || s.total < 5) return null;
+        return { name: t.label, score: (s.correct / s.total) * 100 };
       })
-      .filter(Boolean) as { slug: string; label: string; total: number; pct: number }[];
+      .filter(Boolean) as { name: string; score: number }[];
 
-    const { data: examsInCat } = await supabase
-      .from("exams")
-      .select("id, question_count")
-      .eq("status", "published")
-      .eq("category", category as any);
-    const examIds = (examsInCat || []).map((e: any) => e.id);
-    const questionsTotal = (examsInCat || []).reduce(
-      (s: number, e: any) => s + (e.question_count || 0),
-      0
-    );
-    let questionsAnswered = 0;
-    if (examIds.length > 0) {
-      const { count } = await supabase
-        .from("user_answers")
-        .select("id, user_attempts!inner(user_id, exam_id)", { count: "exact", head: true })
-        .eq("user_attempts.user_id", userId)
-        .in("user_attempts.exam_id", examIds);
-      questionsAnswered = count ?? 0;
-    }
-    const coveragePct = questionsTotal > 0 ? (questionsAnswered / questionsTotal) * 100 : 0;
-
-    const { data: streakRow } = await supabase
-      .from("user_streaks")
-      .select("current_streak")
-      .eq("user_id", userId)
-      .maybeSingle();
-    const streakDays = streakRow?.current_streak ?? 0;
-
-    return calculateReadiness({ recentExams, topics, coveragePct, streakDays });
+    return calculateReadiness({
+      passMark: PASS_MARK,
+      totalTopics,
+      recentExams,
+      topics,
+    });
   });
+
 
 
