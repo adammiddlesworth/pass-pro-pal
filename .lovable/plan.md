@@ -1,70 +1,49 @@
-# Weekly Mixed Challenge
 
-A single 30-question exam shared by all users, rebuilt every Monday from the questions users are getting wrong the most across the entire platform (both categories combined). Paid users only. Unlimited retakes within the week.
+## Diagnostic Exam — Plan
 
-## How it works
+A short, free per-category "diagnostic" that samples questions across every topic, then shows a readiness score, weakest topics, and a prominent upgrade CTA. Signed-in users only (any account, no purchase required).
 
-- Every Monday 00:00 UTC a job ranks every published question by its global wrong-rate over the last 30 days (from `user_answers`), applies a small floor so ultra-rare questions don't dominate, then locks in the top 30.
-- That set is frozen for the week — every user sees the same 30 questions and the same order. Users can retake as many times as they like; each retake is a fresh attempt with fresh scoring.
-- Access gate: any user with a completed purchase in `purchases` (either `real_estate_exam` or `life_health_exam`). Locked users see a teaser card with an upsell.
+### Behavior
 
-## User-facing surface
+- Two diagnostics: one for Real Estate, one for Insurance.
+- ~2 questions per topic (skipping the "mixed" / "final exam" pseudo-topics), capped at ~20 questions total. If a category has fewer topics, we just take a few extra from the largest ones so length stays consistent.
+- Question selection is randomized per attempt but seeded by `(user_id, category, week_start)` so a user re-taking within a week sees the same set (avoids gaming the score by refreshing). New week → new sample.
+- Unlimited retakes.
+- Result screen shows: overall %, readiness score (0–100) using the existing `calculateReadiness` helper, top 3 weakest topics, and a big "Unlock full prep" button linking to checkout for that category.
+- Diagnostic attempts are stored in `user_attempts` with `attempt_type = 'diagnostic'` and `exam_id = null` (like the weekly mix), so they don't pollute per-exam stats or the dashboard readiness calc.
 
-- **Dashboard** — new "Weekly Challenge" card in the top row, next to the readiness hero. Shows week number, "30 questions from what learners miss most", best score this week (if any), and a Start / Retake button. Locked variant shows the same card with a lock and "Unlock with any exam pack".
-- **Exams browser** — a pinned banner above the topic grid mirroring the same card, so it's discoverable from `/exams` too.
-- **Take flow** — reuse the existing exam-taking UI at a new route `/weekly` (no slug — always resolves to the current week's mix). Same question renderer, same submission flow. On completion, show score + a "your rank this week" line (percentile among users who've taken this week's mix).
+### Access
 
-## Data model
+- Requires signed-in user (lives under `_authenticated/`).
+- Entry points:
+  - Track-select page: "Not sure where you stand? Take the 5-min diagnostic" link on each track card.
+  - Dashboard: small card above `UpNextCard` for users who haven't yet taken this week's diagnostic in their category.
+  - Exams browser: subtle banner at the top.
+- After completion, the result screen is the primary conversion surface.
 
-```text
-weekly_mixes
-  id            uuid pk
-  week_start    date unique   -- Monday of the ISO week, UTC
-  created_at    timestamptz
+### Data & backend
 
-weekly_mix_questions
-  mix_id        uuid fk -> weekly_mixes
-  question_id   uuid fk -> questions
-  order_index   int
-  wrong_rate    numeric        -- snapshot at build time, for transparency
-  primary key (mix_id, question_id)
-```
+No new tables. We reuse:
+- `questions` + `exam_tags` for topic-tagged sampling.
+- `user_attempts` (new `attempt_type` value `'diagnostic'`, `exam_id` nullable — already is) + `user_answers`.
 
-Attempts reuse `user_attempts` with a new `attempt_type = 'weekly'` and a new nullable `weekly_mix_id` column so we can show best-of-week and leaderboards without joining through exam_id.
+New server functions in `src/lib/diagnostic.functions.ts` (all `requireSupabaseAuth`):
+- `startDiagnostic({ category })` — deterministic per-week sample, creates a `user_attempts` row, returns `{ attempt_id, questions: [...] }`.
+- `saveDiagnosticAnswer({ attempt_id, question_id, selected_answer_id })`.
+- `completeDiagnostic({ attempt_id })` — scores, computes readiness via existing `calculateReadiness`, returns overall %, per-topic breakdown, weakest topics, readiness result, and `has_access` flag for the CTA copy.
+- `getDiagnosticStatus({ category })` — returns whether the user has an in-progress or completed diagnostic this week.
 
-## Weekly generation
+No admin work required — sampling is automatic. (You mentioned "I can build this in admin if needed" — with auto-sampling it isn't needed. If you'd rather curate later, we can add an `is_diagnostic` flag on exams as a follow-up.)
 
-pg_cron job `generate-weekly-mix` runs `Mon 00:05 UTC`:
+### UI
 
-1. Compute per-question stats over the last 30 days: `wrong = count(is_correct=false)`, `total = count(*)`, require `total >= 20` (floor to avoid noise).
-2. `wrong_rate = wrong::numeric / total`. Order by `wrong_rate desc, total desc`. Take top 30 across all published exams (both categories mixed).
-3. Insert one `weekly_mixes` row for this Monday + 30 `weekly_mix_questions` rows. Idempotent on `week_start`.
+- New route `src/routes/_authenticated/diagnostic.$category.tsx` — take flow + result screen (single route with local state, same pattern as `/weekly`).
+- New component `DiagnosticCard.tsx` — dashboard entry point.
+- Small banner on `exams.index.tsx` and link on `select-track.tsx`.
+- Result screen: readiness gauge (reuse styling from dashboard readiness), weakest-topics list, "Unlock full prep" primary CTA → `checkout` for the category, secondary "Try the free sample exam" link → the existing `is_sample` exam for that category.
 
-If fewer than 30 questions clear the floor (early days), backfill with the highest wrong-rate questions ignoring the floor to always ship 30.
+### Files
 
-## Server functions (`src/lib/weekly.functions.ts`)
-
-- `getCurrentWeeklyMix()` — public read; returns `{ mix, questions, weekStart, weekNumber }`. If no row for this week exists (cron hasn't fired yet on a brand-new install), fall back to the most recent mix.
-- `getWeeklyMixStatus()` — auth'd; returns `{ hasAccess, bestScore, attemptsThisWeek, lastAttemptAt }`.
-- `startWeeklyAttempt()` — auth'd; access-gated; creates a `user_attempts` row with `attempt_type='weekly'` and `weekly_mix_id`.
-- `completeWeeklyAttempt()` — auth'd; scores + updates streak (same path as normal exams).
-
-Grading and answer capture reuse the existing `saveUserAnswer` / `completeAttempt` fns — no changes needed there beyond the new attempt type.
-
-## Files touched
-
-- Migration: `weekly_mixes`, `weekly_mix_questions`, `user_attempts.weekly_mix_id`, extend allowed `attempt_type`, RLS + GRANTs, `generate_weekly_mix()` SQL function, pg_cron schedule.
-- New `src/lib/weekly.functions.ts`.
-- New route `src/routes/_authenticated/weekly.tsx` (start screen) and `src/routes/_authenticated/weekly.take.tsx` (question runner — thin wrapper around the existing take component).
-- New component `WeeklyChallengeCard` used on `dashboard.tsx` and the exams browser.
-- Small addition to `_authenticated/exams.index.tsx` to render the banner.
-
-## Non-goals
-
-- No per-user personalization for the weekly mix (that's what the Weak Spots review is for).
-- No leaderboard page in v1 — just a personal best-of-week and percentile line on the results screen.
-- No email/notification on Monday rotation.
-
-## Open question flagged for later
-
-Access gate is "any purchase unlocks it". Alternative would be "must own the category the question came from" — awkward for a mixed exam, so we're going with any-purchase. Say the word if you'd rather make it fully free as a top-of-funnel hook.
+- Create: `src/lib/diagnostic.functions.ts`, `src/routes/_authenticated/diagnostic.$category.tsx`, `src/components/DiagnosticCard.tsx`.
+- Edit: `src/routes/_authenticated/dashboard.tsx`, `src/routes/_authenticated/select-track.tsx`, `src/routes/_authenticated/exams.index.tsx`.
+- No migrations. No admin changes.

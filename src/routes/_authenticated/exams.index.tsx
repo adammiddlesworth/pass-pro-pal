@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { WeeklyChallengeCard } from "@/components/WeeklyChallengeCard";
+import { DiagnosticCard } from "@/components/DiagnosticCard";
 
 const search = z.object({
   topic: z.string().optional().catch(undefined),
@@ -75,7 +76,8 @@ function ExamsBrowser() {
   if (!topic) {
     return (
       <div className="mx-auto max-w-5xl px-4 py-12">
-        <div className="mb-6">
+        <div className="mb-6 space-y-4">
+          {!unlocked && <DiagnosticCard category={cat} />}
           <WeeklyChallengeCard />
         </div>
         <div className="mb-8 flex flex-wrap items-start justify-between gap-4">

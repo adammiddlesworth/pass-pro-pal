@@ -1,6 +1,6 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Building2, HeartPulse } from "lucide-react";
+import { Building2, HeartPulse, Target } from "lucide-react";
 import { getActiveTrack, setActiveTrack, type TrackId } from "@/lib/track.functions";
 
 export const Route = createFileRoute("/_authenticated/select-track")({
@@ -56,19 +56,31 @@ function SelectTrackPage() {
           const Icon = t.icon;
           const isCurrent = current?.track === t.id;
           return (
-            <button
+            <div
               key={t.id}
-              onClick={() => mutate.mutate(t.id)}
-              disabled={mutate.isPending || current?.locked}
-              className={`group text-left overflow-hidden rounded-lg border bg-gradient-to-br ${t.accent} p-6 transition-shadow hover:shadow-md disabled:cursor-not-allowed disabled:opacity-60`}
+              className={`overflow-hidden rounded-lg border bg-gradient-to-br ${t.accent} p-6`}
             >
-              <Icon className="h-10 w-10 text-primary" />
-              <h2 className="mt-4 text-xl font-semibold">{t.label}</h2>
-              <p className="mt-1 text-sm text-muted-foreground">{t.blurb}</p>
-              <div className="mt-4 text-sm font-medium text-primary">
-                {isCurrent ? "Current track" : "Choose this track →"}
-              </div>
-            </button>
+              <button
+                onClick={() => mutate.mutate(t.id)}
+                disabled={mutate.isPending || current?.locked}
+                className="group w-full text-left disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                <Icon className="h-10 w-10 text-primary" />
+                <h2 className="mt-4 text-xl font-semibold">{t.label}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">{t.blurb}</p>
+                <div className="mt-4 text-sm font-medium text-primary">
+                  {isCurrent ? "Current track" : "Choose this track →"}
+                </div>
+              </button>
+              <Link
+                to="/diagnostic/$category"
+                params={{ category: t.id }}
+                className="mt-4 inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-primary"
+              >
+                <Target className="h-3.5 w-3.5" />
+                Not sure where you stand? Take the free diagnostic
+              </Link>
+            </div>
           );
         })}
       </div>
