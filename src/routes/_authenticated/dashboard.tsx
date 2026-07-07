@@ -283,7 +283,7 @@ function ReadinessCard({ category }: { category: string }) {
                 v >= 80 ? "text-emerald-500" : v >= 65 ? "text-amber-500" : "text-rose-500";
               return (
                 <div key={label} className="flex items-baseline justify-between gap-2">
-                  <span className="text-muted-foreground">{label}</span>
+                  <span className="text-muted-foreground">{label === "Recent" ? "Recent\u00a0" : label}</span>
                   <span className={`font-semibold tabular-nums ${c}`}>{v}</span>
                 </div>
               );
