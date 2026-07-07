@@ -23,6 +23,7 @@ import { Route as ExamsSlugIndexRouteImport } from './routes/exams.$slug.index'
 import { Route as AuthenticatedExamsIndexRouteImport } from './routes/_authenticated/exams.index'
 import { Route as PreviewExamSlugRouteImport } from './routes/preview.exam.$slug'
 import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
+import { Route as AuthenticatedDiagnosticCategoryRouteImport } from './routes/_authenticated/diagnostic.$category'
 import { Route as AuthenticatedAdminExamsRouteImport } from './routes/_authenticated/admin.exams'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
@@ -96,6 +97,12 @@ const ExamsSlugTakeRoute = ExamsSlugTakeRouteImport.update({
   path: '/exams/$slug/take',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedDiagnosticCategoryRoute =
+  AuthenticatedDiagnosticCategoryRouteImport.update({
+    id: '/diagnostic/$category',
+    path: '/diagnostic/$category',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminExamsRoute = AuthenticatedAdminExamsRouteImport.update({
   id: '/admin/exams',
   path: '/admin/exams',
@@ -119,6 +126,7 @@ export interface FileRoutesByFullPath {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/review/$category': typeof ReviewCategoryRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
+  '/diagnostic/$category': typeof AuthenticatedDiagnosticCategoryRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
   '/exams/': typeof AuthenticatedExamsIndexRoute
@@ -136,6 +144,7 @@ export interface FileRoutesByTo {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/review/$category': typeof ReviewCategoryRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
+  '/diagnostic/$category': typeof AuthenticatedDiagnosticCategoryRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
   '/exams': typeof AuthenticatedExamsIndexRoute
@@ -155,6 +164,7 @@ export interface FileRoutesById {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/review/$category': typeof ReviewCategoryRoute
   '/_authenticated/admin/exams': typeof AuthenticatedAdminExamsRoute
+  '/_authenticated/diagnostic/$category': typeof AuthenticatedDiagnosticCategoryRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
   '/_authenticated/exams/': typeof AuthenticatedExamsIndexRoute
@@ -174,6 +184,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/review/$category'
     | '/admin/exams'
+    | '/diagnostic/$category'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
     | '/exams/'
@@ -191,6 +202,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/review/$category'
     | '/admin/exams'
+    | '/diagnostic/$category'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
     | '/exams'
@@ -209,6 +221,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/review/$category'
     | '/_authenticated/admin/exams'
+    | '/_authenticated/diagnostic/$category'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
     | '/_authenticated/exams/'
@@ -330,6 +343,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamsSlugTakeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/diagnostic/$category': {
+      id: '/_authenticated/diagnostic/$category'
+      path: '/diagnostic/$category'
+      fullPath: '/diagnostic/$category'
+      preLoaderRoute: typeof AuthenticatedDiagnosticCategoryRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/exams': {
       id: '/_authenticated/admin/exams'
       path: '/admin/exams'
@@ -352,6 +372,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSelectTrackRoute: typeof AuthenticatedSelectTrackRoute
   AuthenticatedWeeklyRoute: typeof AuthenticatedWeeklyRoute
   AuthenticatedAdminExamsRoute: typeof AuthenticatedAdminExamsRoute
+  AuthenticatedDiagnosticCategoryRoute: typeof AuthenticatedDiagnosticCategoryRoute
   AuthenticatedExamsIndexRoute: typeof AuthenticatedExamsIndexRoute
 }
 
@@ -360,6 +381,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSelectTrackRoute: AuthenticatedSelectTrackRoute,
   AuthenticatedWeeklyRoute: AuthenticatedWeeklyRoute,
   AuthenticatedAdminExamsRoute: AuthenticatedAdminExamsRoute,
+  AuthenticatedDiagnosticCategoryRoute: AuthenticatedDiagnosticCategoryRoute,
   AuthenticatedExamsIndexRoute: AuthenticatedExamsIndexRoute,
 }
 
