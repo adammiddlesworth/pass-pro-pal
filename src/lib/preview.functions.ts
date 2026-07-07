@@ -1,8 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
-import { createClient } from "@supabase/supabase-js";
 import { notFound } from "@tanstack/react-router";
 import { createHash, timingSafeEqual } from "node:crypto";
-import type { Database } from "@/integrations/supabase/types";
 
 function tokenMatches(input: string, expected: string): boolean {
   const a = createHash("sha256").update(input, "utf8").digest();
