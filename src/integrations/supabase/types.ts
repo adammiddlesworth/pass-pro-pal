@@ -299,6 +299,7 @@ export type Database = {
           started_at: string
           total: number
           user_id: string
+          weekly_mix_id: string | null
         }
         Insert: {
           attempt_type?: string
@@ -310,6 +311,7 @@ export type Database = {
           started_at?: string
           total: number
           user_id: string
+          weekly_mix_id?: string | null
         }
         Update: {
           attempt_type?: string
@@ -321,6 +323,7 @@ export type Database = {
           started_at?: string
           total?: number
           user_id?: string
+          weekly_mix_id?: string | null
         }
         Relationships: [
           {
@@ -328,6 +331,13 @@ export type Database = {
             columns: ["exam_id"]
             isOneToOne: false
             referencedRelation: "exams"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_attempts_weekly_mix_id_fkey"
+            columns: ["weekly_mix_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_mixes"
             referencedColumns: ["id"]
           },
         ]
@@ -380,11 +390,69 @@ export type Database = {
         }
         Relationships: []
       }
+      weekly_mix_questions: {
+        Row: {
+          mix_id: string
+          order_index: number
+          question_id: string
+          wrong_rate: number | null
+        }
+        Insert: {
+          mix_id: string
+          order_index: number
+          question_id: string
+          wrong_rate?: number | null
+        }
+        Update: {
+          mix_id?: string
+          order_index?: number
+          question_id?: string
+          wrong_rate?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "weekly_mix_questions_mix_id_fkey"
+            columns: ["mix_id"]
+            isOneToOne: false
+            referencedRelation: "weekly_mixes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "weekly_mix_questions_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      weekly_mixes: {
+        Row: {
+          created_at: string
+          id: string
+          week_start: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          week_start: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          week_start?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      generate_weekly_mix: {
+        Args: { target_week_start?: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

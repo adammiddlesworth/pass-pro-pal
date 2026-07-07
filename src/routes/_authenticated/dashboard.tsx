@@ -27,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
+import { WeeklyChallengeCard } from "@/components/WeeklyChallengeCard";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
@@ -95,6 +96,10 @@ function DashboardPage() {
       </div>
 
       <ReadinessHero category={cat} />
+
+      <div className="mt-6">
+        <WeeklyChallengeCard />
+      </div>
 
       <div className="mt-6">
         <UpNextCard category={cat} />
