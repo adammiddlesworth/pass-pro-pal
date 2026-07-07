@@ -221,7 +221,7 @@ function ReadinessCard({ category }: { category: string }) {
       <CardContent className="p-5">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <BarChart3 className="h-4 w-4" />
-          Exam-day readiness (estimate)
+          Exam-Day Readiness
         </div>
         {isLoading ? (
           <div className="mt-3 h-[120px] animate-pulse rounded bg-muted/40" />
@@ -283,7 +283,7 @@ function ReadinessCard({ category }: { category: string }) {
                 v >= 80 ? "text-emerald-500" : v >= 65 ? "text-amber-500" : "text-rose-500";
               return (
                 <div key={label} className="flex items-baseline justify-between gap-2">
-                  <span className="text-muted-foreground">{label}</span>
+                  <span className="text-muted-foreground">{label === "Recent" ? "Recent\u00a0" : label}</span>
                   <span className={`font-semibold tabular-nums ${c}`}>{v}</span>
                 </div>
               );
