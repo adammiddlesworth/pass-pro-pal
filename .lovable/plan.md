@@ -1,26 +1,20 @@
-## Goal
-Surface the `breakdown` object from `calculateReadiness` in the Readiness card so users can see what's driving their score, not just the headline number.
+## Why it's showing "Upgrade to unlock"
+The dashboard passes `unlocked={!!trackInfo.locked}` to `WeaknessCard`, but `getActiveTrack` returns `locked: false` for admins (so they can switch tracks freely). You're an admin with purchases, so the card treats you as unpaid.
 
-## Change
+## Fix
+Add a separate `hasFullAccess` flag to `ActiveTrackResult` — true when the user is an admin OR owns a purchase for the active track. `locked` keeps its current meaning ("can't switch tracks"); `hasFullAccess` controls paywalled UI like the Weakness card.
 
-### `src/routes/_authenticated/dashboard.tsx` — extend `ReadinessCard`
-Under the existing reason line, add a compact 4-metric breakdown row:
+### Changes
+- `src/lib/track.functions.ts`
+  - Extend `ActiveTrackResult` with `hasFullAccess: boolean`.
+  - Admin path: `hasFullAccess: true`.
+  - Purchase path: `hasFullAccess: true` when `owned.includes(track)`.
+  - Otherwise: `hasFullAccess: false`.
+- `src/routes/_authenticated/dashboard.tsx`
+  - Pass `unlocked={!!trackInfo.hasFullAccess}` to `<WeaknessCard />`.
 
-```
-Recent 74   ·   Coverage 40   ·   Weak-spot 95   ·   Consistency 84
-```
-
-Layout:
-- 2×2 grid on the card (fits the narrow tile), each cell shows label + value.
-- Each value colored by threshold: `≥80` emerald, `≥65` amber, `<65` rose — same band logic as the headline, applied per metric so users see which pillar is dragging the score.
-- Labels: "Recent", "Coverage", "Weak spots", "Consistency".
-- Hidden when `hasData` is false (empty state stays clean).
-
-No changes to `calculateReadiness`, `getReadiness`, or the gauge visuals.
+That's it — no schema, no other UI changes. You'll see the unlocked Weakness card (either "complete a few exams" empty state or the pass-mark bar + "Retake weakness exam" button depending on completed attempts).
 
 ## Files
-- edit: `src/routes/_authenticated/dashboard.tsx`
-
-## Not changing
-- Function logic, weights, thresholds, or data fetch.
-- Other cards.
+- edit: `src/lib/track.functions.ts`
+- edit: `src/routes/_authenticated/dashboard.tsx` (one line)

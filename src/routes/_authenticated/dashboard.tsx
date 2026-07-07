@@ -89,7 +89,7 @@ function DashboardPage() {
 
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
         <StreakCard />
-        <WeaknessCard category={cat} unlocked={!!trackInfo.locked} />
+        <WeaknessCard category={cat} unlocked={!!trackInfo.hasFullAccess} />
       </div>
 
       <div className="mt-6">
