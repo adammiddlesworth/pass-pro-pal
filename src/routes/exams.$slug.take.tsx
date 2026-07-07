@@ -78,6 +78,7 @@ function QuizPage() {
   useEffect(() => {
     if (initRef.current) return;
     if (!user || !hasAccess) return;
+    if (questions.length === 0) return;
     initRef.current = true;
     (async () => {
       try {
