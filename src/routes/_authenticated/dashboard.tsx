@@ -201,19 +201,20 @@ function ReadinessCard({ category }: { category: string }) {
     queryFn: () => getReadiness({ data: { category } }),
   });
 
-  const bandMeta = (band: ReadinessResult["band"]) =>
-    band === "ready"
-      ? { label: "Ready", color: "text-emerald-500", stroke: "stroke-emerald-500", pill: "bg-emerald-500/15 text-emerald-500" }
-      : band === "almost"
-        ? { label: "Almost there", color: "text-amber-500", stroke: "stroke-amber-500", pill: "bg-amber-500/15 text-amber-500" }
-        : { label: "Not ready yet", color: "text-rose-500", stroke: "stroke-rose-500", pill: "bg-rose-500/15 text-rose-500" };
+  const colorMeta = (color: ReadinessResult["color"]) =>
+    color === "green"
+      ? { text: "text-emerald-500", stroke: "stroke-emerald-500", pill: "bg-emerald-500/15 text-emerald-500" }
+      : color === "amber"
+        ? { text: "text-amber-500", stroke: "stroke-amber-500", pill: "bg-amber-500/15 text-amber-500" }
+        : { text: "text-rose-500", stroke: "stroke-rose-500", pill: "bg-rose-500/15 text-rose-500" };
 
-  const score = data?.score ?? 0;
-  const meta = bandMeta(data?.band ?? "not_ready");
-  const hasData = !!data && data.recentAvg !== null;
+  const score = data?.readiness ?? 0;
+  const meta = colorMeta(data?.color ?? "red");
+  const hasData = !!data && data.breakdown.recent > 0;
   const radius = 42;
   const circ = 2 * Math.PI * radius;
   const offset = circ * (1 - Math.min(100, Math.max(0, score)) / 100);
+
 
   return (
     <Card>
