@@ -55,8 +55,50 @@ export const getExamBySlug = createServerFn({ method: "GET" })
 export const getExamQuestions = createServerFn({ method: "GET" })
   .inputValidator((data: { examId: string }) => data)
   .handler(async ({ data }) => {
-    const supabase = getPublicClient();
-    const { data: questions, error } = await supabase
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    // Look up the exam to determine whether it is a free sample.
+    const { data: exam, error: examErr } = await supabaseAdmin
+      .from("exams")
+      .select("id, is_sample, category, status")
+      .eq("id", data.examId)
+      .maybeSingle();
+    if (examErr) throw examErr;
+    if (!exam || exam.status !== "published") throw new Error("Exam not found");
+
+    // Non-sample exams require an authenticated user with a matching purchase (or admin).
+    if (!exam.is_sample) {
+      const authHeader =
+        getRequestHeader("authorization") ?? getRequestHeader("Authorization" as any);
+      const token = authHeader?.replace(/^Bearer\s+/i, "").trim();
+      if (!token) throw new Error("Authentication required to view this exam");
+
+      const { data: userRes, error: userErr } = await supabaseAdmin.auth.getUser(token);
+      if (userErr || !userRes.user) throw new Error("Authentication required to view this exam");
+      const userId = userRes.user.id;
+
+      const { data: isAdmin } = await supabaseAdmin.rpc("has_role", {
+        _user_id: userId,
+        _role: "admin",
+      });
+      if (!isAdmin) {
+        const productId = CATEGORY_PRODUCT_IDS[exam.category];
+        if (!productId) throw new Error("Purchase required to view this exam");
+        const { data: purchases, error: pErr } = await supabaseAdmin
+          .from("purchases")
+          .select("id")
+          .eq("user_id", userId)
+          .eq("status", "completed")
+          .eq("product_id", productId)
+          .limit(1);
+        if (pErr) throw pErr;
+        if (!purchases || purchases.length === 0) {
+          throw new Error("Purchase required to view this exam");
+        }
+      }
+    }
+
+    const { data: questions, error } = await supabaseAdmin
       .from("questions")
       .select("*, answers(*)")
       .eq("exam_id", data.examId)
