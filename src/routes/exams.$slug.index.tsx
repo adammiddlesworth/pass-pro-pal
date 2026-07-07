@@ -31,11 +31,7 @@ export const Route = createFileRoute("/exams/$slug/")({
       queryKey: ["exam", params.slug],
       queryFn: () => getExamBySlug({ data: { slug: params.slug } }),
     });
-    const questions = await context.queryClient.ensureQueryData({
-      queryKey: ["exam-questions", exam.id],
-      queryFn: () => getExamQuestions({ data: { examId: exam.id } }),
-    });
-    return { exam, questions };
+    return { exam };
   },
   component: ExamDetailPage,
 });
