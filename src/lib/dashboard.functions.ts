@@ -21,8 +21,10 @@ export type ExamSearchResult = {
   question_count: number;
   exam_number: number | null;
   youtube_video_id: string | null;
+  is_sample: boolean;
   tags: string[];
 };
+
 
 export const searchExams = createServerFn({ method: "GET" })
   .inputValidator((data: { category: string; q?: string; topic?: string; limit?: number }) => data)
