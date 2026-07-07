@@ -210,7 +210,7 @@ function ReadinessCard({ category }: { category: string }) {
 
   const score = data?.score ?? 0;
   const meta = bandMeta(data?.band ?? "not_ready");
-  const hasData = !!data && (data.recentAvgPct !== null);
+  const hasData = !!data && data.recentAvg !== null;
   const radius = 42;
   const circ = 2 * Math.PI * radius;
   const offset = circ * (1 - Math.min(100, Math.max(0, score)) / 100);
