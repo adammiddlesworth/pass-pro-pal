@@ -230,6 +230,42 @@ function QuizPage() {
     );
   }
 
+  // Anonymous visitor on a non-sample exam — nudge to sign in.
+  if (!user && !isSample) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Lock className="h-7 w-7" />
+            </div>
+            <h1 className="text-2xl font-bold">Sign in to take this exam</h1>
+            <p className="mx-auto mt-3 max-w-md text-muted-foreground">
+              This exam is part of a paid track. Sign in and unlock full access to start.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Link to="/auth">
+                <Button size="lg">Sign in</Button>
+              </Link>
+              <Link to="/exams">
+                <Button size="lg" variant="outline">Back to Exams</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Questions still loading.
+  if (questions.length === 0 || !currentQuestion) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12 text-sm text-muted-foreground">
+        Loading exam…
+      </div>
+    );
+  }
+
   if (submitted) {
     const gradeable = questions.slice(0, effectiveTotal);
     const score = finalScore ?? gradeable.reduce((acc: number, q: typeof questions[0]) => {
