@@ -196,7 +196,7 @@ function QuizPage() {
     }
   };
 
-  // Paywall interstitial — user hit the free preview cap.
+  // Paywall — user is signed in but doesn't own this track and this isn't the free sample.
   if (paywalled && !submitted) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
@@ -205,21 +205,17 @@ function QuizPage() {
             <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
               <Lock className="h-7 w-7" />
             </div>
-            <h1 className="text-2xl font-bold">You've hit the free preview limit</h1>
+            <h1 className="text-2xl font-bold">This exam is locked</h1>
             <p className="mx-auto mt-3 max-w-md text-muted-foreground">
-              You've answered the first {previewLimit} questions of this exam. Unlock full
-              access to finish this exam and every other exam in this track.
-            </p>
-            <p className="mt-2 text-sm text-muted-foreground">
-              Your progress so far is saved — you can pick up right where you left off after upgrading.
+              Unlock full access to this exam and every other exam in this track.
             </p>
             <div className="mt-6 flex flex-wrap justify-center gap-3">
               <Button size="lg" onClick={handleUnlock} disabled={checkingOut}>
                 {checkingOut ? "Loading..." : "Unlock Full Access"}
               </Button>
-              <Button size="lg" variant="outline" onClick={handleSubmit} disabled={saving}>
-                {saving ? "Saving..." : "See My Preview Score"}
-              </Button>
+              <Link to="/exams">
+                <Button size="lg" variant="outline">Back to Exams</Button>
+              </Link>
             </div>
           </CardContent>
         </Card>
