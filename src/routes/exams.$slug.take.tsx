@@ -59,12 +59,13 @@ function QuizPage() {
     queryFn: () => getUserCategoryAccess(),
     enabled: !!user,
   });
-  const hasAccess = !!access?.[exam.category];
+  const purchased = !!access?.[exam.category];
+  const isSample = !!(exam as any).is_sample;
+  const hasAccess = purchased || isSample;
 
-  const previewLimit = Math.min(FREEMIUM_PREVIEW_COUNT, questions.length);
-  const effectiveTotal = hasAccess ? questions.length : previewLimit;
+  const effectiveTotal = questions.length;
   const currentQuestion = questions[currentIndex];
-  const paywalled = !hasAccess && currentIndex >= previewLimit;
+  const paywalled = !!user && !hasAccess;
   const progress = ((Math.min(currentIndex, effectiveTotal) + (submitted ? 1 : 0)) / effectiveTotal) * 100;
 
   // Start or resume an attempt for authenticated + full-access users.
