@@ -1,109 +1,111 @@
 export type ReadinessExam = { score: number };
 export type ReadinessTopic = { name: string; score: number };
 
-export type ReadinessBand = "ready" | "almost" | "not_ready";
-
 export type ReadinessInput = {
   passMark: number;
   totalTopics: number;
-  recentExams: ReadinessExam[]; // OLDEST -> NEWEST, up to last 8
-  topics: ReadinessTopic[]; // practiced topics only
+  recentExams: ReadinessExam[];
+  topics: ReadinessTopic[];
 };
 
 export type ReadinessResult = {
-  score: number;
-  band: ReadinessBand;
+  readiness: number;
+  status: "Ready" | "Almost there" | "Not ready yet";
+  color: "green" | "amber" | "red";
   reason: string;
-  recentAvg: number | null;
-  trend: number | null;
-  weakestTopic: { name: string; score: number } | null;
-  topicsPracticed: number;
-  totalTopics: number;
+  breakdown: {
+    recent: number;
+    coverage: number;
+    weakSpotScore: number;
+    consistency: number;
+  };
 };
 
-const clamp = (n: number, lo = 0, hi = 100) => Math.max(lo, Math.min(hi, n));
-const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : 0);
-
 export function calculateReadiness(input: ReadinessInput): ReadinessResult {
-  const passMark = input.passMark;
-  const totalTopics = Math.max(1, input.totalTopics);
-  const exams = input.recentExams.slice(-8); // oldest -> newest
-  const scores = exams.map((e) => e.score);
-  const topics = input.topics;
+  const { passMark, totalTopics, recentExams, topics } = input;
 
-  // 1) Recent performance (45%): passMark -> 60, 100 -> 100, (passMark-30) -> 0
-  const avg = scores.length ? mean(scores) : 0;
-  const perfScore = scores.length
-    ? avg >= passMark
-      ? clamp(60 + ((avg - passMark) / (100 - passMark)) * 40)
-      : clamp(60 - ((passMark - avg) / 30) * 60)
-    : 0;
-
-  // 2) Trend (15%): last3 vs prior3, +/-10 -> 100/0
-  const last3 = scores.slice(-3);
-  const prior3 = scores.slice(-6, -3);
-  const trend = last3.length && prior3.length ? mean(last3) - mean(prior3) : 0;
-  const trendScore = scores.length >= 2 ? clamp(50 + trend * 5) : 50;
-
-  // 3) Topic mastery (20%): strong topics / totalTopics
-  const strong = topics.filter((t) => t.score >= passMark).length;
-  const masteryScore = clamp((strong / totalTopics) * 100);
-
-  // 4) Weakest-topic drag (15%)
-  const weakest = topics.length ? [...topics].sort((a, b) => a.score - b.score)[0] : null;
-  const dragScore = !weakest
-    ? 50
-    : weakest.score >= passMark
-      ? 100
-      : clamp(100 - (passMark - weakest.score) * 2);
-
-  // 5) Consistency (5%): 100 - stddev
-  let consistencyScore = 100;
-  if (scores.length >= 2) {
-    const m = mean(scores);
-    const variance = mean(scores.map((s) => (s - m) ** 2));
-    consistencyScore = clamp(100 - Math.sqrt(variance));
+  // --- 1. Recent performance (40%) — linear-decay weighted average, last 8 exams
+  const recent8 = recentExams.slice(-8);
+  let recent = 0;
+  if (recent8.length > 0) {
+    let weightedSum = 0;
+    let weightTotal = 0;
+    recent8.forEach((exam, i) => {
+      const weight = i + 1; // oldest = 1, newest = highest
+      weightedSum += exam.score * weight;
+      weightTotal += weight;
+    });
+    recent = weightedSum / weightTotal;
   }
 
-  const raw =
-    perfScore * 0.45 +
-    trendScore * 0.15 +
-    masteryScore * 0.2 +
-    dragScore * 0.15 +
-    consistencyScore * 0.05;
+  // --- 2. Coverage (20%) — % of exam topics practiced
+  const coverage =
+    totalTopics > 0 ? Math.min(100, (topics.length / totalTopics) * 100) : 0;
 
-  const score = scores.length === 0 ? 0 : Math.round(raw);
-  const band: ReadinessBand = score >= 80 ? "ready" : score >= 65 ? "almost" : "not_ready";
+  // --- 3. Weak-spot penalty (25%) — averaged shortfall below pass mark
+  const PENALTY_MULTIPLIER = 2;
+  let gapSum = 0;
+  topics.forEach((t) => {
+    gapSum += Math.max(0, passMark - t.score);
+  });
+  const avgGap = totalTopics > 0 ? gapSum / totalTopics : 0;
+  const weakSpotScore = Math.max(0, 100 - avgGap * PENALTY_MULTIPLIER);
 
-  const topicsPracticed = topics.length;
-  const coverageFrac = topicsPracticed / totalTopics;
+  // --- 4. Consistency (15%) — lower score volatility = higher score
+  let consistency = 100;
+  const scores = recent8.map((e) => e.score);
+  if (scores.length > 1) {
+    const mean = scores.reduce((a, b) => a + b, 0) / scores.length;
+    const variance =
+      scores.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / scores.length;
+    const stdDev = Math.sqrt(variance);
+    consistency = Math.max(0, 100 - stdDev * 2);
+  }
+
+  // --- Final weighted blend
+  const readiness = Math.round(
+    recent * 0.4 + coverage * 0.2 + weakSpotScore * 0.25 + consistency * 0.15
+  );
+
+  // --- Status band
+  let status: ReadinessResult["status"];
+  let color: ReadinessResult["color"];
+  if (readiness >= 80) {
+    status = "Ready";
+    color = "green";
+  } else if (readiness >= 65) {
+    status = "Almost there";
+    color = "amber";
+  } else {
+    status = "Not ready yet";
+    color = "red";
+  }
+
+  // --- Dynamic reason: name the weakest practiced topic
+  let weakest: ReadinessTopic | null = null;
+  topics.forEach((t) => {
+    if (!weakest || t.score < weakest.score) weakest = t;
+  });
 
   let reason: string;
-  if (scores.length === 0) {
-    reason = "Take an exam to get your first readiness score.";
-  } else if (scores.length < 3) {
-    const n = 3 - scores.length;
-    reason = `Take ${n} more exam${n === 1 ? "" : "s"} to sharpen this estimate.`;
-  } else if (weakest && weakest.score < passMark) {
-    reason = `${weakest.name} is your weakest topic (${Math.round(weakest.score)}%). Focus here next.`;
-  } else if (coverageFrac < 0.5) {
-    reason = `You've only practiced ${topicsPracticed} of ${totalTopics} topics. Broaden your coverage.`;
-  } else if (trend < -5) {
-    reason = `Recent scores dropped ${Math.round(-trend)}%. Slow down and review.`;
-  } else if (band === "ready") {
-    reason = `Consistently above the ${passMark}% pass mark. Keep it up.`;
+  if (readiness >= 80) {
+    reason = "You're tracking above the pass line. Keep it up.";
+  } else if (weakest) {
+    reason = `Focus on your weak spots. Weakest area: ${(weakest as ReadinessTopic).name} (${(weakest as ReadinessTopic).score}%).`;
   } else {
-    reason = "Almost there — a few more strong sessions will push you over.";
+    reason = "Take a few practice exams to build your readiness score.";
   }
 
   return {
-    score,
-    band,
+    readiness,
+    status,
+    color,
     reason,
-    recentAvg: scores.length ? Math.round(avg) : null,
-    trend: scores.length >= 2 ? Math.round(trend) : null,
-    weakestTopic: weakest ? { name: weakest.name, score: Math.round(weakest.score) } : null,
-    topicsPracticed,
-    totalTopics,
+    breakdown: {
+      recent: Math.round(recent),
+      coverage: Math.round(coverage),
+      weakSpotScore: Math.round(weakSpotScore),
+      consistency: Math.round(consistency),
+    },
   };
 }
