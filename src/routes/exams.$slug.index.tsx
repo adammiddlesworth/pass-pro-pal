@@ -4,7 +4,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import {
   getExamBySlug,
-  getExamQuestions,
   getUserCategoryAccess,
   CATEGORY_PRODUCT_IDS,
 } from "@/lib/exams.functions";
