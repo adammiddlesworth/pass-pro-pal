@@ -221,7 +221,7 @@ function ReadinessCard({ category }: { category: string }) {
       <CardContent className="p-5">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <BarChart3 className="h-4 w-4" />
-          Exam-day readiness (estimate)
+          Exam-Day Readiness
         </div>
         {isLoading ? (
           <div className="mt-3 h-[120px] animate-pulse rounded bg-muted/40" />
