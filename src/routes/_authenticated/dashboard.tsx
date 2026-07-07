@@ -269,6 +269,28 @@ function ReadinessCard({ category }: { category: string }) {
             </div>
           </div>
         )}
+        {hasData && data && (
+          <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-border pt-3 text-xs">
+            {(
+              [
+                ["Recent", data.breakdown.recent],
+                ["Coverage", data.breakdown.coverage],
+                ["Weak spots", data.breakdown.weakSpotScore],
+                ["Consistency", data.breakdown.consistency],
+              ] as const
+            ).map(([label, v]) => {
+              const c =
+                v >= 80 ? "text-emerald-500" : v >= 65 ? "text-amber-500" : "text-rose-500";
+              return (
+                <div key={label} className="flex items-baseline justify-between gap-2">
+                  <span className="text-muted-foreground">{label}</span>
+                  <span className={`font-semibold tabular-nums ${c}`}>{v}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
       </CardContent>
     </Card>
   );
