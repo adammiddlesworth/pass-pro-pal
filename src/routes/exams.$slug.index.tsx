@@ -55,7 +55,9 @@ function ExamDetailPage() {
   });
 
   const productId = CATEGORY_PRODUCT_IDS[exam.category];
-  const hasAccess = !!access?.[exam.category];
+  const isSample = !!(exam as any).is_sample;
+  const purchased = !!access?.[exam.category];
+  const hasAccess = purchased || isSample;
 
   const handleBuy = async () => {
     if (!productId) return;
