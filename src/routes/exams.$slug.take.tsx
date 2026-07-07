@@ -37,7 +37,7 @@ export const Route = createFileRoute("/exams/$slug/take")({
 });
 
 function QuizPage() {
-  const { exam, questions } = Route.useLoaderData();
+  const { exam } = Route.useLoaderData();
   const { user } = useAuth();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, string>>({});
@@ -59,10 +59,20 @@ function QuizPage() {
   const isSample = !!(exam as any).is_sample;
   const hasAccess = purchased || isSample;
 
+  // Only fetch questions once we know the user has access (sample or purchased).
+  // For anonymous or paywalled visitors we render the paywall instead.
+  const { data: questions = [] } = useQuery({
+    queryKey: ["exam-questions", exam.id],
+    queryFn: () => getExamQuestions({ data: { examId: exam.id } }),
+    enabled: isSample || (!!user && hasAccess),
+  });
+
   const effectiveTotal = questions.length;
   const currentQuestion = questions[currentIndex];
   const paywalled = !!user && !hasAccess;
-  const progress = ((Math.min(currentIndex, effectiveTotal) + (submitted ? 1 : 0)) / effectiveTotal) * 100;
+  const progress = effectiveTotal > 0
+    ? ((Math.min(currentIndex, effectiveTotal) + (submitted ? 1 : 0)) / effectiveTotal) * 100
+    : 0;
 
   // Start or resume an attempt for authenticated + full-access users.
   useEffect(() => {
