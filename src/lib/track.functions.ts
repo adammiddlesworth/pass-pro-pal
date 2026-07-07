@@ -7,6 +7,7 @@ export type TrackId = "real_estate" | "life_health_insurance";
 export type ActiveTrackResult = {
   track: TrackId | null;
   locked: boolean; // true if the user has a purchase and can't switch
+  hasFullAccess: boolean; // true if admin or owns the active track
 };
 
 // Owned track (if any) takes precedence; otherwise the stored preference.
@@ -29,7 +30,7 @@ export const getActiveTrack = createServerFn({ method: "GET" })
     const storedTrack = (profile?.active_track as TrackId | null) ?? null;
 
     if (isAdmin) {
-      return { track: storedTrack, locked: false };
+      return { track: storedTrack, locked: false, hasFullAccess: true };
     }
 
     const { data: purchases } = await supabase
@@ -46,11 +47,17 @@ export const getActiveTrack = createServerFn({ method: "GET" })
       .filter(Boolean) as TrackId[];
 
     if (owned.length > 0) {
-      return { track: owned[0], locked: true };
+      const track = owned[0];
+      return { track, locked: true, hasFullAccess: true };
     }
 
-    return { track: storedTrack, locked: false };
+    return {
+      track: storedTrack,
+      locked: false,
+      hasFullAccess: storedTrack ? owned.includes(storedTrack) : false,
+    };
   });
+
 
 
 export const setActiveTrack = createServerFn({ method: "POST" })
