@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN test_date date;
