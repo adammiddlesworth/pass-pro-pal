@@ -99,6 +99,10 @@ function DashboardPage() {
       <ReadinessHero category={cat} />
 
       <div className="mt-6">
+        <DiagnosticCard category={cat} />
+      </div>
+
+      <div className="mt-6">
         <WeeklyChallengeCard />
       </div>
 
