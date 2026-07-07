@@ -78,6 +78,7 @@ export const searchExams = createServerFn({ method: "GET" })
       question_count: r.question_count,
       exam_number: r.exam_number,
       youtube_video_id: r.youtube_video_id,
+      is_sample: !!r.is_sample,
       tags: (r.exam_tags || []).map((t: any) => t.tag),
     }));
 
