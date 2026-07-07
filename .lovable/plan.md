@@ -1,80 +1,70 @@
-## Goal
+# Weekly Mixed Challenge
 
-Redesign the dashboard to match the mockup: one big **Exam-Day Readiness** hero at the top, the blue **Up next** banner below, then a two-column row with **Daily streak** and a **Personalized review** card (the renamed Weakness card) showing individual weak topics. Keep the existing "Recent exams" list at the bottom.
+A single 30-question exam shared by all users, rebuilt every Monday from the questions users are getting wrong the most across the entire platform (both categories combined). Paid users only. Unlimited retakes within the week.
 
-## Layout
+## How it works
+
+- Every Monday 00:00 UTC a job ranks every published question by its global wrong-rate over the last 30 days (from `user_answers`), applies a small floor so ultra-rare questions don't dominate, then locks in the top 30.
+- That set is frozen for the week — every user sees the same 30 questions and the same order. Users can retake as many times as they like; each retake is a fresh attempt with fresh scoring.
+- Access gate: any user with a completed purchase in `purchases` (either `real_estate_exam` or `life_health_exam`). Locked users see a teaser card with an upsell.
+
+## User-facing surface
+
+- **Dashboard** — new "Weekly Challenge" card in the top row, next to the readiness hero. Shows week number, "30 questions from what learners miss most", best score this week (if any), and a Start / Retake button. Locked variant shows the same card with a lock and "Unlock with any exam pack".
+- **Exams browser** — a pinned banner above the topic grid mirroring the same card, so it's discoverable from `/exams` too.
+- **Take flow** — reuse the existing exam-taking UI at a new route `/weekly` (no slug — always resolves to the current week's mix). Same question renderer, same submission flow. On completion, show score + a "your rank this week" line (percentile among users who've taken this week's mix).
+
+## Data model
 
 ```text
-┌──────────────────────────────────────────────────────────────┐
-│  ⬤ 74   EXAM-DAY READINESS                                    │
-│  /100   [Almost there]                                       │
-│         Focus on your weak spots. Weakest area: Finance…     │
-│         ─────────────────────────────────────────────────    │
-│         74%          4/10             12 days                │
-│         Recent avg   Topics covered   Until test             │
-└──────────────────────────────────────────────────────────────┘
+weekly_mixes
+  id            uuid pk
+  week_start    date unique   -- Monday of the ISO week, UTC
+  created_at    timestamptz
 
-┌──────────────────────────────────────────────────────────────┐
-│  →  UP NEXT                                        ▷ Start   │
-│     Real Estate Principles — Practice Exam 4                 │
-│     45 questions · ~35 min                                   │
-└──────────────────────────────────────────────────────────────┘
-
-┌───────────────────────────┐  ┌──────────────────────────────┐
-│ 🔥 Daily streak           │  │ ✦ Personalized review        │
-│ 9   ✓ ✓ ✓ ✓ ✓ ✓ T         │  │  ◎ Your review session       │
-│ days in a row             │  │    Built from your weak spots│
-│ Best streak: 14 days…     │  │  Loan-to-value ratios   42%  │
-│                           │  │  Amortization schedules 51%  │
-│                           │  │  Escrow & closing costs 63%  │
-│                           │  │  [ ▷ Start review session ]  │
-└───────────────────────────┘  └──────────────────────────────┘
-
-Recent exams (unchanged)
+weekly_mix_questions
+  mix_id        uuid fk -> weekly_mixes
+  question_id   uuid fk -> questions
+  order_index   int
+  wrong_rate    numeric        -- snapshot at build time, for transparency
+  primary key (mix_id, question_id)
 ```
 
-## Changes
+Attempts reuse `user_attempts` with a new `attempt_type = 'weekly'` and a new nullable `weekly_mix_id` column so we can show best-of-week and leaderboards without joining through exam_id.
 
-### 1. Test-date field on profile
-- Migration: add `test_date date` to `public.profiles` (nullable). RLS already allows the user to update their own row.
-- Add a **Settings → Exam date** entry point. Simplest: an inline "Set exam date" button on the readiness card when `test_date is null`; when set, show "12 days Until test" and let the user click it to change (shadcn Popover + Calendar with `pointer-events-auto`). No separate settings page needed for this pass.
-- New server fn `updateTestDate({ date | null })` under `src/lib/profile.functions.ts` (uses `requireSupabaseAuth`).
+## Weekly generation
 
-### 2. Readiness data — add weakest-topics list + test date to the response
-- Extend `getReadiness` to return the underlying topic list and the profile's `test_date`:
-  - `topics: { slug, name, score }[]` (sorted ascending by score, capped at ~3 for the Personalized review card).
-  - `topicsPracticed: number`, `topicsTotal: number` (drives "4/10 Topics covered").
-  - `testDate: string | null` (ISO date) — days-until computed client-side.
-- `ReadinessResult` type updated accordingly; existing `breakdown` and `readiness` numbers unchanged.
+pg_cron job `generate-weekly-mix` runs `Mon 00:05 UTC`:
 
-### 3. New `ReadinessHero` component (replaces `ReadinessCard` + `StatsRow`)
-- Single full-width `Card` with a two-column body: ring on the left (larger — 128px), content stack on the right.
-- Right column: status pill → reason text → thin divider → three-column mini-stat row (`Recent avg %`, `Topics covered X/Y`, `Until test N days` or "Set exam date" button when unset).
-- Colour rules unchanged (green ≥85, amber ≥70, else rose) driven by `data.color`.
-- Removes the old 2×2 breakdown grid; the four sub-scores stay in the tooltip via `title` on the ring (progressive disclosure) so we don't lose the info.
+1. Compute per-question stats over the last 30 days: `wrong = count(is_correct=false)`, `total = count(*)`, require `total >= 20` (floor to avoid noise).
+2. `wrong_rate = wrong::numeric / total`. Order by `wrong_rate desc, total desc`. Take top 30 across all published exams (both categories mixed).
+3. Insert one `weekly_mixes` row for this Monday + 30 `weekly_mix_questions` rows. Idempotent on `week_start`.
 
-### 4. Rename `WeaknessCard` → `PersonalizedReviewCard`
-- Header: sparkle icon (`Sparkles` from lucide) + "Personalized review".
-- Body when unlocked and topics exist: a "Your review session" sub-header with `Target` icon and "Built from your weak spots" caption, then a list of the weakest topics from `readiness.topics` (up to 3) with each score coloured by the same 80/65 thresholds already used for the Recent list. Bottom button: "Start review session" → `/review/$category` (existing route).
-- Empty / locked states keep their current copy but restyled to match.
-- Old avg-vs-pass progress bar is removed — the ring in the hero already communicates overall standing.
+If fewer than 30 questions clear the floor (early days), backfill with the highest wrong-rate questions ignoring the floor to always ship 30.
 
-### 5. Grid changes in `dashboard.tsx`
-- Delete `StatsRow` and the three-tile row.
-- Render `<ReadinessHero />` full-width above `<UpNextCard />`.
-- The `Daily streak` + `Personalized review` two-column row stays where it is.
-- `Recent exams` card stays at the bottom, unchanged.
+## Server functions (`src/lib/weekly.functions.ts`)
+
+- `getCurrentWeeklyMix()` — public read; returns `{ mix, questions, weekStart, weekNumber }`. If no row for this week exists (cron hasn't fired yet on a brand-new install), fall back to the most recent mix.
+- `getWeeklyMixStatus()` — auth'd; returns `{ hasAccess, bestScore, attemptsThisWeek, lastAttemptAt }`.
+- `startWeeklyAttempt()` — auth'd; access-gated; creates a `user_attempts` row with `attempt_type='weekly'` and `weekly_mix_id`.
+- `completeWeeklyAttempt()` — auth'd; scores + updates streak (same path as normal exams).
+
+Grading and answer capture reuse the existing `saveUserAnswer` / `completeAttempt` fns — no changes needed there beyond the new attempt type.
 
 ## Files touched
 
-- `supabase/migrations/…` — add `test_date` column to `profiles`.
-- `src/lib/readiness.ts` — extend `ReadinessResult` type.
-- `src/lib/dashboard.functions.ts` — extend `getReadiness` return; keep pass mark / topic logic.
-- `src/lib/profile.functions.ts` *(new)* — `getMyProfile`, `updateTestDate`.
-- `src/routes/_authenticated/dashboard.tsx` — new `ReadinessHero`, rename `WeaknessCard` to `PersonalizedReviewCard`, remove `StatsRow`, wire everything up.
+- Migration: `weekly_mixes`, `weekly_mix_questions`, `user_attempts.weekly_mix_id`, extend allowed `attempt_type`, RLS + GRANTs, `generate_weekly_mix()` SQL function, pg_cron schedule.
+- New `src/lib/weekly.functions.ts`.
+- New route `src/routes/_authenticated/weekly.tsx` (start screen) and `src/routes/_authenticated/weekly.take.tsx` (question runner — thin wrapper around the existing take component).
+- New component `WeeklyChallengeCard` used on `dashboard.tsx` and the exams browser.
+- Small addition to `_authenticated/exams.index.tsx` to render the banner.
 
 ## Non-goals
 
-- No changes to `/review/$category`, exam flows, or purchases logic.
-- No new settings page — exam date is edited inline from the hero for now.
-- No visual redesign of the Up next banner, Daily streak card, or Recent exams list.
+- No per-user personalization for the weekly mix (that's what the Weak Spots review is for).
+- No leaderboard page in v1 — just a personal best-of-week and percentile line on the results screen.
+- No email/notification on Monday rotation.
+
+## Open question flagged for later
+
+Access gate is "any purchase unlocks it". Alternative would be "must own the category the question came from" — awkward for a mixed exam, so we're going with any-purchase. Say the word if you'd rather make it fully free as a top-of-funnel hook.
