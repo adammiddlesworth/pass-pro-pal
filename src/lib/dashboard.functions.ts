@@ -85,7 +85,7 @@ export const searchExams = createServerFn({ method: "GET" })
     if (q && !topic) {
       const { data: tagged, error: tagErr } = await supabase
         .from("exam_tags")
-        .select("exam_id, exams!inner(id, slug, title, description, category, question_count, exam_number, youtube_video_id, status)")
+        .select("exam_id, exams!inner(id, slug, title, description, category, question_count, exam_number, youtube_video_id, is_sample, status)")
         .ilike("tag", `%${q}%`)
         .eq("exams.status", "published")
         .eq("exams.category", data.category as any)
@@ -105,6 +105,7 @@ export const searchExams = createServerFn({ method: "GET" })
             question_count: e.question_count,
             exam_number: e.exam_number,
             youtube_video_id: e.youtube_video_id,
+            is_sample: !!e.is_sample,
             tags: [],
           });
         }
