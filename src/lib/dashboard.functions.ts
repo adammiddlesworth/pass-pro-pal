@@ -48,7 +48,7 @@ export const searchExams = createServerFn({ method: "GET" })
     let query = supabase
       .from("exams")
       .select(
-        "id, slug, title, description, category, question_count, exam_number, youtube_video_id, exam_tags(tag)"
+        "id, slug, title, description, category, question_count, exam_number, youtube_video_id, is_sample, exam_tags(tag)"
       )
       .eq("status", "published")
       .eq("category", data.category as any)
