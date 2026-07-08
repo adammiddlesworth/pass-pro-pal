@@ -29,15 +29,14 @@ type Plan = {
   name: string;
   price: string;
   tagline: string;
-  productId: "real_estate_exam" | "life_health_exam" | "exam_bundle";
+  productId: "real_estate_exam" | "life_health_exam";
   features: string[];
-  highlight?: boolean;
 };
 
 const plans: Plan[] = [
   {
     name: "Real Estate Exam",
-    price: "$19.99",
+    price: "$49.99",
     tagline: "Everything you need for the real estate licensing exam.",
     productId: "real_estate_exam",
     features: [
@@ -49,22 +48,8 @@ const plans: Plan[] = [
     ],
   },
   {
-    name: "Exam Bundle",
-    price: "$29.99",
-    tagline: "Both licensing tracks. Best value.",
-    productId: "exam_bundle",
-    highlight: true,
-    features: [
-      "Real Estate exam pack",
-      "Life & Health Insurance exam pack",
-      "Weekly challenge access",
-      "Detailed performance reports",
-      "Lifetime access — pay once",
-    ],
-  },
-  {
     name: "Life & Health Insurance",
-    price: "$19.99",
+    price: "$49.99",
     tagline: "Full prep for the life & health insurance exam.",
     productId: "life_health_exam",
     features: [
@@ -108,13 +93,11 @@ function PricingPage() {
     if (productId === "real_estate_exam") return access.real_estate === true;
     if (productId === "life_health_exam")
       return access.life_health_insurance === true;
-    if (productId === "exam_bundle")
-      return access.real_estate === true && access.life_health_insurance === true;
     return false;
   };
 
   return (
-    <div className="mx-auto max-w-5xl px-4 py-16">
+    <div className="mx-auto max-w-3xl px-4 py-16">
       <div className="text-center">
         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">Simple, one-time pricing</h1>
         <p className="mt-4 text-lg text-muted-foreground">
@@ -122,21 +105,14 @@ function PricingPage() {
         </p>
       </div>
 
-      <div className="mt-12 grid gap-6 md:grid-cols-3">
+      <div className="mt-12 grid gap-6 md:grid-cols-2">
         {plans.map((plan) => {
           const owned = ownsProduct(plan.productId);
           return (
             <div
               key={plan.productId}
-              className={`flex flex-col rounded-xl border p-6 ${
-                plan.highlight ? "border-primary bg-primary/5 shadow-md" : "border-border bg-card"
-              }`}
+              className="flex flex-col rounded-xl border border-border bg-card p-6"
             >
-              {plan.highlight && (
-                <div className="mb-3 inline-flex w-fit rounded-full bg-primary px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary-foreground">
-                  Best value
-                </div>
-              )}
               <h2 className="text-xl font-semibold">{plan.name}</h2>
               <p className="mt-1 text-sm text-muted-foreground">{plan.tagline}</p>
               <div className="mt-4 flex items-baseline gap-1">
@@ -163,11 +139,7 @@ function PricingPage() {
                 <button
                   onClick={() => handleBuy(plan.productId)}
                   disabled={checkingOut}
-                  className={`mt-6 inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-semibold transition-colors disabled:opacity-60 ${
-                    plan.highlight
-                      ? "bg-primary text-primary-foreground hover:bg-primary/90"
-                      : "border border-input bg-background text-foreground hover:bg-accent"
-                  }`}
+                  className="mt-6 inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-60"
                 >
                   {checkingOut ? "Loading…" : user ? "Buy now" : "Get started"}
                 </button>
@@ -176,6 +148,7 @@ function PricingPage() {
           );
         })}
       </div>
+
 
       <div className="mt-16 rounded-xl border border-border bg-card p-6 text-center">
         <h3 className="text-lg font-semibold">30-day money-back guarantee</h3>

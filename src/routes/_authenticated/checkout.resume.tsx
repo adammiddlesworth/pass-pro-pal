@@ -10,7 +10,6 @@ import { Button } from "@/components/ui/button";
 const ALLOWED_PRODUCTS = new Set([
   "real_estate_exam",
   "life_health_exam",
-  "exam_bundle",
 ]);
 
 const searchSchema = z.object({
