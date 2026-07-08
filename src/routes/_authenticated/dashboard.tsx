@@ -104,7 +104,7 @@ function DashboardPage() {
       </div>
 
       <div className="mt-6">
-        <WeeklyChallengeCard />
+        <WeeklyChallengeCard category={cat} />
       </div>
 
       <div className="mt-6">
