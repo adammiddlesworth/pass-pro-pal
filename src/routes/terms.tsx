@@ -109,12 +109,11 @@ function TermsPage() {
         <h2>9. Limitation of liability</h2>
         <p>
           To the fullest extent permitted by law, Pass Pal's aggregate liability arising out of or
-          related to these Terms or the Service is limited to the amounts you paid to us (or to
-          Paddle for our Service) in the twelve (12) months preceding the event giving rise to
-          the claim. We are not liable for indirect, incidental, special, consequential, or
-          punitive damages, including loss of profits, data, goodwill, or exam or licensing
-          outcomes. Nothing in these Terms limits liability that cannot be limited by law
-          (including fraud, death, or personal injury).
+          related to these Terms or the Service is limited to the amounts you paid to us in the
+          twelve (12) months preceding the event giving rise to the claim. We are not liable for
+          indirect, incidental, special, consequential, or punitive damages, including loss of
+          profits, data, goodwill, or exam or licensing outcomes. Nothing in these Terms limits
+          liability that cannot be limited by law (including fraud, death, or personal injury).
         </p>
 
         <h2>10. Indemnity</h2>
