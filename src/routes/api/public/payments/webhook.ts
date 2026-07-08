@@ -55,6 +55,25 @@ async function handleTransactionCompleted(data: any, env: PaddleEnv) {
   const { error } = await (supabase.from("purchases") as any)
     .upsert(rows, { onConflict: "user_id,product_id,environment" });
   if (error) console.error("purchases upsert error", error);
+
+  // Best-effort GHL sync — mark as customer.
+  try {
+    const { data: userRes } = await supabase.auth.admin.getUserById(userId);
+    const email = (userRes as any)?.user?.email as string | undefined;
+    if (email) {
+      const { syncToGhl } = await import("@/lib/ghl.server");
+      await syncToGhl({
+        email,
+        tags: ["customer", `purchased-${productId}`],
+        customFields: {
+          passpal_last_activity_at: new Date().toISOString(),
+        },
+        source: "PassPal purchase",
+      });
+    }
+  } catch (e) {
+    console.error("[ghl] purchase sync error", e);
+  }
 }
 
 async function handleTransactionRefunded(data: any, env: PaddleEnv) {

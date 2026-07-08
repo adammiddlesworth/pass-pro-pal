@@ -82,6 +82,10 @@ function AuthPage() {
         if (error) throw error;
         // If auto-confirm is enabled, a session may be returned immediately.
         if (data.session) {
+          // Fire-and-forget GHL sync — do not block navigation.
+          import("@/lib/ghl-sync.functions")
+            .then(({ syncSignupToGhl }) => syncSignupToGhl())
+            .catch((e) => console.error("[ghl] signup sync error", e));
           navigate({ to: returnUrl, search: returnSearch });
         } else {
           setInfo("Check your email to confirm your account, then sign in.");

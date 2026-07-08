@@ -254,6 +254,34 @@ export const completeDiagnostic = createServerFn({ method: "POST" })
       .limit(1);
     const hasAccess = (purchases?.length ?? 0) > 0;
 
+    // Best-effort GHL sync — never fails the request.
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { syncToGhl } = await import("./ghl.server");
+      const { data: userRes } = await supabaseAdmin.auth.admin.getUserById(userId);
+      const email = userRes?.user?.email;
+      if (email) {
+        await syncToGhl({
+          email,
+          tags: [
+            "diagnostic-completed",
+            `readiness-${readiness.color}`,
+            `track-${data.category}`,
+          ],
+          customFields: {
+            passpal_track: data.category,
+            passpal_readiness_score: readiness.readiness,
+            passpal_diagnostic_status: readiness.status,
+            passpal_weak_topics: weakestTopics.map((t) => t.name).join(", "),
+            passpal_last_activity_at: new Date().toISOString(),
+          },
+          source: "PassPal diagnostic",
+        });
+      }
+    } catch (e) {
+      console.error("[ghl] diagnostic sync error", e);
+    }
+
     return {
       attemptId: data.attemptId,
       category: data.category,

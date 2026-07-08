@@ -74,5 +74,27 @@ export const setActiveTrack = createServerFn({ method: "POST" })
       .update({ active_track: data.track })
       .eq("id", context.userId);
     if (error) throw error;
+
+    // Best-effort GHL sync.
+    try {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { syncToGhl } = await import("@/lib/ghl.server");
+      const { data: userRes } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+      const email = userRes?.user?.email;
+      if (email) {
+        await syncToGhl({
+          email,
+          tags: [`track-${data.track}`],
+          customFields: {
+            passpal_track: data.track,
+            passpal_last_activity_at: new Date().toISOString(),
+          },
+          source: "PassPal track select",
+        });
+      }
+    } catch (e) {
+      console.error("[ghl] track sync error", e);
+    }
+
     return { ok: true };
   });
