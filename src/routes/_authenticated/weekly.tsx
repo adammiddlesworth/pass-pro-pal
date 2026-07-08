@@ -9,10 +9,12 @@ import {
   startWeeklyAttempt,
 } from "@/lib/weekly.functions";
 import { saveUserAnswer, completeAttempt } from "@/lib/exams.functions";
+import { getActiveTrack } from "@/lib/track.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { useTrackCheckout } from "@/hooks/use-track-checkout";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/weekly")({
