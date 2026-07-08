@@ -125,6 +125,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { checkIsAdmin } from "@/lib/admin.functions";
 import { getActiveTrack, setActiveTrack } from "@/lib/track.functions";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserCircle2 } from "lucide-react";
 
 
 
