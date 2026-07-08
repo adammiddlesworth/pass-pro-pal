@@ -11,6 +11,8 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { PaymentTestModeBanner } from "@/components/PaymentTestModeBanner";
+
 
 function NotFoundComponent() {
   return (
@@ -257,10 +259,12 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex min-h-screen flex-col bg-background">
+        <PaymentTestModeBanner />
         <Navbar />
         <main className="flex-1">
           <Outlet />
         </main>
+
         <footer className="border-t border-border bg-secondary py-8 text-center text-sm text-secondary-foreground/80">
           <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 px-4">
             <Logo variant="mark-white" className="h-8 w-auto" />

@@ -14,6 +14,8 @@ type OpenOptions = {
   attribution?: AttributionParams;
   /** If true and user is signed out, navigate to /auth?mode=signup&redirect=... instead of opening checkout. */
   redirectToAuth?: boolean;
+  /** Override the product resolved from category (e.g. "exam_bundle"). */
+  productId?: string;
 };
 
 export function useTrackCheckout(category: string | undefined | null) {
@@ -21,13 +23,10 @@ export function useTrackCheckout(category: string | undefined | null) {
   const [checkingOut, setCheckingOut] = useState(false);
 
   const openCheckout = async (opts: OpenOptions = {}) => {
-    if (!category) {
-      toast.error("Choose a track first.");
-      return;
-    }
-    const productId = CATEGORY_PRODUCT_IDS[category];
+    const productId =
+      opts.productId ?? (category ? CATEGORY_PRODUCT_IDS[category] : undefined);
     if (!productId) {
-      toast.error("Checkout unavailable for this track.");
+      toast.error("Choose a track first.");
       return;
     }
     if (!user) {
@@ -73,3 +72,4 @@ export function useTrackCheckout(category: string | undefined | null) {
 
   return { openCheckout, checkingOut };
 }
+

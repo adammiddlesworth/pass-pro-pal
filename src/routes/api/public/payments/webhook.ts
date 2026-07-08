@@ -76,10 +76,17 @@ async function handleTransactionCompleted(data: any, env: PaddleEnv) {
   }
 }
 
-async function handleTransactionRefunded(data: any, env: PaddleEnv) {
-  // On refund or payment failure, revoke access for all products granted by
-  // this transaction.
-  const transactionId: string = data.id;
+async function handleAdjustmentUpdated(data: any, env: PaddleEnv) {
+  // Fires when an adjustment (refund or chargeback) transitions from
+  // pending to approved/rejected. Only revoke on approved refunds/chargebacks.
+  const action: string | undefined = data.action; // 'refund' | 'chargeback' | 'credit' | 'chargeback_reverse' etc.
+  const status: string | undefined = data.status;
+  const transactionId: string | undefined = data.transaction_id ?? data.transactionId;
+
+  if (!transactionId) return;
+  if (status !== "approved") return;
+  if (action !== "refund" && action !== "chargeback") return;
+
   const supabase = getSupabase();
   const { error } = await supabase
     .from("purchases")
@@ -95,13 +102,16 @@ async function handleWebhook(req: Request, env: PaddleEnv) {
     case EventName.TransactionCompleted:
       await handleTransactionCompleted(event.data, env);
       break;
-    case EventName.TransactionPaymentFailed:
-      await handleTransactionRefunded(event.data, env);
+    case EventName.AdjustmentUpdated:
+      await handleAdjustmentUpdated(event.data, env);
       break;
     default:
+      // transaction.payment_failed and other events are informational for
+      // one-time purchases — nothing to revoke since access was never granted.
       console.log("Unhandled event:", event.eventType);
   }
 }
+
 
 export const Route = createFileRoute("/api/public/payments/webhook")({
   server: {
