@@ -217,6 +217,15 @@ function Navbar() {
               Exams
             </Link>
           )}
+          {!user && !loading && (
+            <Link
+              to="/pricing"
+              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
+              activeProps={{ className: "text-primary" }}
+            >
+              Pricing
+            </Link>
+          )}
           <ThemeToggle />
           {loading ? null : user ? (
             <Link
@@ -255,7 +264,13 @@ function RootComponent() {
         <footer className="border-t border-border bg-secondary py-8 text-center text-sm text-secondary-foreground/80">
           <div className="mx-auto flex max-w-5xl flex-col items-center gap-3 px-4">
             <Logo variant="mark-white" className="h-8 w-auto" />
-            <p>PassPal &copy; {new Date().getFullYear()}</p>
+            <nav className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2">
+              <Link to="/pricing" className="hover:text-primary hover:underline">Pricing</Link>
+              <Link to="/terms" className="hover:text-primary hover:underline">Terms</Link>
+              <Link to="/privacy" className="hover:text-primary hover:underline">Privacy</Link>
+              <Link to="/refund-policy" className="hover:text-primary hover:underline">Refunds</Link>
+            </nav>
+            <p>Pass Pal &copy; {new Date().getFullYear()}</p>
           </div>
         </footer>
       </div>
