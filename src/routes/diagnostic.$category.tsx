@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { useMutation } from "@tanstack/react-query";
-import { Sparkles, PlayCircle, Trophy, ArrowRight, Target, ChevronRight } from "lucide-react";
+import { Sparkles, PlayCircle, Trophy, ArrowRight, Target, ChevronRight, UserPlus } from "lucide-react";
 import {
   startDiagnostic,
   completeDiagnostic,
@@ -13,13 +13,15 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 const CATEGORY_LABEL: Record<string, string> = {
   real_estate: "Real Estate",
   life_health_insurance: "Life & Health Insurance",
 };
 
-export const Route = createFileRoute("/_authenticated/diagnostic/$category")({
+export const Route = createFileRoute("/diagnostic/$category")({
+  ssr: false,
   component: DiagnosticPage,
 });
 
@@ -27,6 +29,15 @@ function DiagnosticPage() {
   const { category } = Route.useParams();
   const [payload, setPayload] = useState<DiagnosticPayload | null>(null);
   const [result, setResult] = useState<DiagnosticResult | null>(null);
+  const [authed, setAuthed] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
+    const { data: sub } = supabase.auth.onAuthStateChange((_e, session) => {
+      setAuthed(!!session?.user);
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
 
   if (!CATEGORY_LABEL[category]) {
     return (
@@ -38,10 +49,18 @@ function DiagnosticPage() {
 
   if (result) return <ResultView result={result} onRetake={() => { setPayload(null); setResult(null); }} />;
   if (payload) return <QuizView payload={payload} onComplete={(r) => setResult(r)} />;
-  return <IntroView category={category} onStart={(p) => setPayload(p)} />;
+  return <IntroView category={category} authed={authed} onStart={(p) => setPayload(p)} />;
 }
 
-function IntroView({ category, onStart }: { category: string; onStart: (p: DiagnosticPayload) => void }) {
+function IntroView({
+  category,
+  authed,
+  onStart,
+}: {
+  category: string;
+  authed: boolean | null;
+  onStart: (p: DiagnosticPayload) => void;
+}) {
   const [loading, setLoading] = useState(false);
   const handleStart = async () => {
     setLoading(true);
@@ -55,6 +74,7 @@ function IntroView({ category, onStart }: { category: string; onStart: (p: Diagn
       setLoading(false);
     }
   };
+  const redirectPath = `/diagnostic/${category}`;
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
       <Card>
@@ -83,20 +103,44 @@ function IntroView({ category, onStart }: { category: string; onStart: (p: Diagn
               Retake with a new sample each week.
             </li>
           </ul>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Button size="lg" onClick={handleStart} disabled={loading}>
-              <PlayCircle className="mr-2 h-5 w-5" />
-              {loading ? "Loading…" : "Start diagnostic"}
-            </Button>
-            <Link to="/dashboard">
-              <Button variant="outline" size="lg">Back to dashboard</Button>
-            </Link>
-          </div>
+          {authed === false ? (
+            <>
+              <div className="mt-8 flex flex-wrap gap-3">
+                <Link to="/auth" search={{ mode: "signup", redirect: redirectPath }}>
+                  <Button size="lg">
+                    <UserPlus className="mr-2 h-5 w-5" />
+                    Create free account to start
+                  </Button>
+                </Link>
+              </div>
+              <p className="mt-4 text-xs text-muted-foreground">
+                Already have an account?{" "}
+                <Link
+                  to="/auth"
+                  search={{ mode: "signin", redirect: redirectPath }}
+                  className="text-primary hover:underline"
+                >
+                  Sign in
+                </Link>
+              </p>
+            </>
+          ) : (
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Button size="lg" onClick={handleStart} disabled={loading || authed === null}>
+                <PlayCircle className="mr-2 h-5 w-5" />
+                {loading ? "Loading…" : "Start diagnostic"}
+              </Button>
+              <Link to="/dashboard">
+                <Button variant="outline" size="lg">Back to dashboard</Button>
+              </Link>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
   );
 }
+
 
 function QuizView({ payload, onComplete }: { payload: DiagnosticPayload; onComplete: (r: DiagnosticResult) => void }) {
   const [currentIndex, setCurrentIndex] = useState(0);

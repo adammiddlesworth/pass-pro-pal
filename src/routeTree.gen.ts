@@ -15,6 +15,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ReviewCategoryRouteImport } from './routes/review.$category'
+import { Route as DiagnosticCategoryRouteImport } from './routes/diagnostic.$category'
 import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
 import { Route as AuthenticatedWeeklyRouteImport } from './routes/_authenticated/weekly'
 import { Route as AuthenticatedSelectTrackRouteImport } from './routes/_authenticated/select-track'
@@ -23,7 +24,6 @@ import { Route as ExamsSlugIndexRouteImport } from './routes/exams.$slug.index'
 import { Route as AuthenticatedExamsIndexRouteImport } from './routes/_authenticated/exams.index'
 import { Route as PreviewExamSlugRouteImport } from './routes/preview.exam.$slug'
 import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
-import { Route as AuthenticatedDiagnosticCategoryRouteImport } from './routes/_authenticated/diagnostic.$category'
 import { Route as AuthenticatedAdminExamsRouteImport } from './routes/_authenticated/admin.exams'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 
@@ -54,6 +54,11 @@ const IndexRoute = IndexRouteImport.update({
 const ReviewCategoryRoute = ReviewCategoryRouteImport.update({
   id: '/review/$category',
   path: '/review/$category',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiagnosticCategoryRoute = DiagnosticCategoryRouteImport.update({
+  id: '/diagnostic/$category',
+  path: '/diagnostic/$category',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CheckoutSuccessRoute = CheckoutSuccessRouteImport.update({
@@ -97,12 +102,6 @@ const ExamsSlugTakeRoute = ExamsSlugTakeRouteImport.update({
   path: '/exams/$slug/take',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedDiagnosticCategoryRoute =
-  AuthenticatedDiagnosticCategoryRouteImport.update({
-    id: '/diagnostic/$category',
-    path: '/diagnostic/$category',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedAdminExamsRoute = AuthenticatedAdminExamsRouteImport.update({
   id: '/admin/exams',
   path: '/admin/exams',
@@ -124,9 +123,9 @@ export interface FileRoutesByFullPath {
   '/select-track': typeof AuthenticatedSelectTrackRoute
   '/weekly': typeof AuthenticatedWeeklyRoute
   '/checkout/success': typeof CheckoutSuccessRoute
+  '/diagnostic/$category': typeof DiagnosticCategoryRoute
   '/review/$category': typeof ReviewCategoryRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
-  '/diagnostic/$category': typeof AuthenticatedDiagnosticCategoryRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
   '/exams/': typeof AuthenticatedExamsIndexRoute
@@ -142,9 +141,9 @@ export interface FileRoutesByTo {
   '/select-track': typeof AuthenticatedSelectTrackRoute
   '/weekly': typeof AuthenticatedWeeklyRoute
   '/checkout/success': typeof CheckoutSuccessRoute
+  '/diagnostic/$category': typeof DiagnosticCategoryRoute
   '/review/$category': typeof ReviewCategoryRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
-  '/diagnostic/$category': typeof AuthenticatedDiagnosticCategoryRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
   '/exams': typeof AuthenticatedExamsIndexRoute
@@ -162,9 +161,9 @@ export interface FileRoutesById {
   '/_authenticated/select-track': typeof AuthenticatedSelectTrackRoute
   '/_authenticated/weekly': typeof AuthenticatedWeeklyRoute
   '/checkout/success': typeof CheckoutSuccessRoute
+  '/diagnostic/$category': typeof DiagnosticCategoryRoute
   '/review/$category': typeof ReviewCategoryRoute
   '/_authenticated/admin/exams': typeof AuthenticatedAdminExamsRoute
-  '/_authenticated/diagnostic/$category': typeof AuthenticatedDiagnosticCategoryRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
   '/_authenticated/exams/': typeof AuthenticatedExamsIndexRoute
@@ -182,9 +181,9 @@ export interface FileRouteTypes {
     | '/select-track'
     | '/weekly'
     | '/checkout/success'
+    | '/diagnostic/$category'
     | '/review/$category'
     | '/admin/exams'
-    | '/diagnostic/$category'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
     | '/exams/'
@@ -200,9 +199,9 @@ export interface FileRouteTypes {
     | '/select-track'
     | '/weekly'
     | '/checkout/success'
+    | '/diagnostic/$category'
     | '/review/$category'
     | '/admin/exams'
-    | '/diagnostic/$category'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
     | '/exams'
@@ -219,9 +218,9 @@ export interface FileRouteTypes {
     | '/_authenticated/select-track'
     | '/_authenticated/weekly'
     | '/checkout/success'
+    | '/diagnostic/$category'
     | '/review/$category'
     | '/_authenticated/admin/exams'
-    | '/_authenticated/diagnostic/$category'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
     | '/_authenticated/exams/'
@@ -236,6 +235,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   StartRoute: typeof StartRoute
   CheckoutSuccessRoute: typeof CheckoutSuccessRoute
+  DiagnosticCategoryRoute: typeof DiagnosticCategoryRoute
   ReviewCategoryRoute: typeof ReviewCategoryRoute
   ExamsSlugTakeRoute: typeof ExamsSlugTakeRoute
   PreviewExamSlugRoute: typeof PreviewExamSlugRoute
@@ -285,6 +285,13 @@ declare module '@tanstack/react-router' {
       path: '/review/$category'
       fullPath: '/review/$category'
       preLoaderRoute: typeof ReviewCategoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/diagnostic/$category': {
+      id: '/diagnostic/$category'
+      path: '/diagnostic/$category'
+      fullPath: '/diagnostic/$category'
+      preLoaderRoute: typeof DiagnosticCategoryRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/checkout/success': {
@@ -343,13 +350,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ExamsSlugTakeRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/diagnostic/$category': {
-      id: '/_authenticated/diagnostic/$category'
-      path: '/diagnostic/$category'
-      fullPath: '/diagnostic/$category'
-      preLoaderRoute: typeof AuthenticatedDiagnosticCategoryRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/admin/exams': {
       id: '/_authenticated/admin/exams'
       path: '/admin/exams'
@@ -372,7 +372,6 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSelectTrackRoute: typeof AuthenticatedSelectTrackRoute
   AuthenticatedWeeklyRoute: typeof AuthenticatedWeeklyRoute
   AuthenticatedAdminExamsRoute: typeof AuthenticatedAdminExamsRoute
-  AuthenticatedDiagnosticCategoryRoute: typeof AuthenticatedDiagnosticCategoryRoute
   AuthenticatedExamsIndexRoute: typeof AuthenticatedExamsIndexRoute
 }
 
@@ -381,7 +380,6 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSelectTrackRoute: AuthenticatedSelectTrackRoute,
   AuthenticatedWeeklyRoute: AuthenticatedWeeklyRoute,
   AuthenticatedAdminExamsRoute: AuthenticatedAdminExamsRoute,
-  AuthenticatedDiagnosticCategoryRoute: AuthenticatedDiagnosticCategoryRoute,
   AuthenticatedExamsIndexRoute: AuthenticatedExamsIndexRoute,
 }
 
@@ -395,6 +393,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   StartRoute: StartRoute,
   CheckoutSuccessRoute: CheckoutSuccessRoute,
+  DiagnosticCategoryRoute: DiagnosticCategoryRoute,
   ReviewCategoryRoute: ReviewCategoryRoute,
   ExamsSlugTakeRoute: ExamsSlugTakeRoute,
   PreviewExamSlugRoute: PreviewExamSlugRoute,
@@ -404,13 +403,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

@@ -20,6 +20,7 @@ import {
 const searchSchema = z.object({
   redirect: z.string().optional(),
   email: z.string().optional(),
+  mode: z.enum(["signin", "signup"]).optional(),
   ...attributionSearchSchema.shape,
 });
 
@@ -35,11 +36,12 @@ function isSafeRedirect(path: string | undefined): path is string {
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { redirect, email: prefilledEmail, ...rawAttribution } = Route.useSearch();
+  const { redirect, email: prefilledEmail, mode: initialMode, ...rawAttribution } = Route.useSearch();
   const attribution = mergeAttribution(rawAttribution);
   const fromGhl = isGhlAttribution(attribution);
   const returnUrl = isSafeRedirect(redirect) ? redirect : "/dashboard";
   const returnSearch = buildAttributionSearch(attribution);
+  const isDiagnostic = isSafeRedirect(redirect) && redirect.startsWith("/diagnostic/");
 
   useEffect(() => {
     storeAttribution(attribution);
@@ -50,7 +52,10 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">(
+    initialMode ?? (isDiagnostic ? "signup" : "signin")
+  );
+
 
   const handleGoogleSignIn = async () => {
     const result = await lovable.auth.signInWithOAuth("google", {
@@ -115,13 +120,22 @@ function AuthPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="space-y-2">
           <CardTitle className="text-center">
-            {fromGhl ? "Welcome! Let's get you set up" : "Welcome to PassPal"}
+            {isDiagnostic
+              ? "See your readiness score"
+              : fromGhl
+              ? "Welcome! Let's get you set up"
+              : "Welcome to PassPal"}
           </CardTitle>
-          {fromGhl && (
+          {isDiagnostic ? (
+            <p className="text-center text-sm text-muted-foreground">
+              Create a free account to take the 10-minute diagnostic.
+            </p>
+          ) : fromGhl ? (
             <p className="text-center text-sm text-muted-foreground">
               Thanks for joining from GHL. Create your account to start studying.
             </p>
-          )}
+          ) : null}
+
         </CardHeader>
         <CardContent className="space-y-4">
           <Button onClick={handleGoogleSignIn} variant="outline" className="w-full">
