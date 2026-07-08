@@ -20,6 +20,7 @@ import {
 const searchSchema = z.object({
   redirect: z.string().optional(),
   email: z.string().optional(),
+  mode: z.enum(["signin", "signup"]).optional(),
   ...attributionSearchSchema.shape,
 });
 
@@ -35,11 +36,12 @@ function isSafeRedirect(path: string | undefined): path is string {
 
 function AuthPage() {
   const navigate = useNavigate();
-  const { redirect, email: prefilledEmail, ...rawAttribution } = Route.useSearch();
+  const { redirect, email: prefilledEmail, mode: initialMode, ...rawAttribution } = Route.useSearch();
   const attribution = mergeAttribution(rawAttribution);
   const fromGhl = isGhlAttribution(attribution);
   const returnUrl = isSafeRedirect(redirect) ? redirect : "/dashboard";
   const returnSearch = buildAttributionSearch(attribution);
+  const isDiagnostic = isSafeRedirect(redirect) && redirect.startsWith("/diagnostic/");
 
   useEffect(() => {
     storeAttribution(attribution);
@@ -50,7 +52,10 @@ function AuthPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
-  const [mode, setMode] = useState<"signin" | "signup" | "forgot">("signin");
+  const [mode, setMode] = useState<"signin" | "signup" | "forgot">(
+    initialMode ?? (isDiagnostic ? "signup" : "signin")
+  );
+
 
   const handleGoogleSignIn = async () => {
     const result = await lovable.auth.signInWithOAuth("google", {
