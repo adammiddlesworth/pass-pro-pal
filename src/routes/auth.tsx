@@ -99,13 +99,14 @@ function AuthPage() {
             .then(({ syncSignupToGhl }) => syncSignupToGhl())
             .catch((e) => console.error("[ghl] signup sync error", e));
           navigate({ to: returnUrl, search: returnSearch });
+          goToReturnUrl();
         } else {
           setInfo("Check your email to confirm your account, then sign in.");
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: returnUrl, search: returnSearch });
+        goToReturnUrl();
       }
     } catch (e: any) {
       setError(e.message ?? "Authentication failed");
