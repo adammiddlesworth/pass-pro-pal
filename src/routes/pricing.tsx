@@ -151,9 +151,10 @@ function PricingPage() {
 
 
       <div className="mt-16 rounded-xl border border-border bg-card p-6 text-center">
-        <h3 className="text-lg font-semibold">30-day money-back guarantee</h3>
+        <h3 className="text-lg font-semibold">Pass on the first try guarantee</h3>
         <p className="mt-2 text-sm text-muted-foreground">
-          Not satisfied? Request a full refund within 30 days. See our{" "}
+          Take your exam with confidence. If you don't pass on your first attempt, we'll refund your
+          purchase. See our{" "}
           <Link to="/refund-policy" className="text-primary underline">
             refund policy
           </Link>{" "}

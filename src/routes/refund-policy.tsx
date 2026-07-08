@@ -6,12 +6,12 @@ export const Route = createFileRoute("/refund-policy")({
       { title: "Refund Policy — PassPal" },
       {
         name: "description",
-        content: "PassPal offers a 30-day money-back guarantee on all purchases.",
+        content: "PassPal pass-on-the-first-try guarantee: if you don't pass, we'll refund your purchase.",
       },
       { property: "og:title", content: "Refund Policy — PassPal" },
       {
         property: "og:description",
-        content: "30-day money-back guarantee. Full refund within 30 days of purchase.",
+        content: "Pass on the first try guarantee. If you don't pass your exam, we'll refund your purchase.",
       },
       { name: "robots", content: "index,follow" },
     ],
@@ -26,17 +26,17 @@ function RefundPage() {
         <h1>Refund Policy</h1>
         <p className="text-sm text-muted-foreground">Last updated: {new Date().getFullYear()}</p>
 
-        <h2>30-day money-back guarantee</h2>
+        <h2>Pass on the first try guarantee</h2>
         <p>
-          <strong>Pass Pal</strong> offers a 30-day money-back guarantee on all purchases of the
-          PassPal Service. If you are not satisfied with your purchase, you may request a full
-          refund within thirty (30) days of your order date, for any reason.
+          <strong>Pass Pal</strong> guarantees you'll pass your licensing exam on the first
+          attempt. If you take the exam and don't pass, we'll refund your full purchase price.
         </p>
 
         <h2>How to request a refund</h2>
         <p>
           To request a refund, contact Pass Pal through the support channels in the app with the
-          email address you used at checkout. We'll issue the refund through our payment
+          email address you used at checkout and proof of your exam attempt (for example, an
+          official score report or exam confirmation). We'll issue the refund through our payment
           processor, Stripe.
         </p>
         <p>
@@ -44,9 +44,9 @@ function RefundPage() {
           bank or card issuer and is typically 5–10 business days after the refund is issued.
         </p>
 
-        <h2>After 30 days</h2>
+        <h2>Other refund requests</h2>
         <p>
-          After the 30-day window, refunds are considered on a case-by-case basis (for example,
+          Refunds outside the pass guarantee are considered on a case-by-case basis (for example,
           if you were unable to access the Service due to a technical issue on our side).
         </p>
 
