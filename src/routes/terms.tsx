@@ -140,11 +140,7 @@ function TermsPage() {
         <h2>13. Contact</h2>
         <p>
           Questions about these Terms? Contact Pass Pal via the support channels available in the
-          app or from our checkout provider Paddle at{" "}
-          <a href="https://paddle.net" target="_blank" rel="noopener noreferrer">
-            paddle.net
-          </a>
-          .
+          app.
         </p>
       </article>
     </div>
