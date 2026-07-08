@@ -53,7 +53,7 @@ function ExamDetailPage() {
   const purchased = !!access?.[exam.category];
   const hasAccess = purchased || isSample;
 
-  const handleBuy = () => openCheckout({ attribution });
+  const handleBuy = () => openCheckout({ redirectToAuth: true });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
