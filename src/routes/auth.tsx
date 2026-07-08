@@ -43,6 +43,18 @@ function AuthPage() {
   const returnSearch = buildAttributionSearch(attribution);
   const isDiagnostic = isSafeRedirect(redirect) && redirect.startsWith("/diagnostic/");
 
+  // returnUrl may include a query string (e.g. /checkout/resume?product=...).
+  // TanStack's navigate({ to }) treats `to` as a pathname only, dropping the
+  // search params. Use a full-page navigation so the target route sees them.
+  const goToReturnUrl = () => {
+    const attrQs = new URLSearchParams(
+      Object.entries(returnSearch).filter(([, v]) => v != null).map(([k, v]) => [k, String(v)]),
+    ).toString();
+    const sep = returnUrl.includes("?") ? "&" : "?";
+    const finalUrl = attrQs ? `${returnUrl}${sep}${attrQs}` : returnUrl;
+    window.location.assign(finalUrl);
+  };
+
   useEffect(() => {
     storeAttribution(attribution);
   }, [attribution]);
@@ -86,14 +98,14 @@ function AuthPage() {
           import("@/lib/ghl-sync.functions")
             .then(({ syncSignupToGhl }) => syncSignupToGhl())
             .catch((e) => console.error("[ghl] signup sync error", e));
-          navigate({ to: returnUrl, search: returnSearch });
+          goToReturnUrl();
         } else {
           setInfo("Check your email to confirm your account, then sign in.");
         }
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
-        navigate({ to: returnUrl, search: returnSearch });
+        goToReturnUrl();
       }
     } catch (e: any) {
       setError(e.message ?? "Authentication failed");
