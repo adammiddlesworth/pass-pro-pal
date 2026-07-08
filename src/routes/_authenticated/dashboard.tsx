@@ -29,6 +29,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import { WeeklyChallengeCard } from "@/components/WeeklyChallengeCard";
 import { DiagnosticCard } from "@/components/DiagnosticCard";
+import { useTrackCheckout } from "@/hooks/use-track-checkout";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   component: DashboardPage,
