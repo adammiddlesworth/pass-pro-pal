@@ -35,22 +35,10 @@ function RefundPage() {
 
         <h2>How to request a refund</h2>
         <p>
-          Our online reseller <strong>Paddle.com</strong> is the Merchant of Record for all
-          purchases and handles refund requests on our behalf. To request a refund:
+          To request a refund, contact Pass Pal through the support channels in the app with the
+          email address you used at checkout. We'll issue the refund through our payment
+          processor, Stripe.
         </p>
-        <ol>
-          <li>
-            Visit{" "}
-            <a href="https://paddle.net" target="_blank" rel="noopener noreferrer">
-              paddle.net
-            </a>{" "}
-            and look up your order using the email address you used at checkout, or
-          </li>
-          <li>
-            Contact Pass Pal through the support channels in the app and we will assist with your
-            refund.
-          </li>
-        </ol>
         <p>
           Refunds are returned to the original payment method. Processing time depends on your
           bank or card issuer and is typically 5–10 business days after the refund is issued.
@@ -64,12 +52,7 @@ function RefundPage() {
 
         <h2>Questions</h2>
         <p>
-          If you have any questions about this policy, contact Pass Pal through the app or reach
-          out to Paddle at{" "}
-          <a href="https://paddle.net" target="_blank" rel="noopener noreferrer">
-            paddle.net
-          </a>
-          .
+          If you have any questions about this policy, contact Pass Pal through the app.
         </p>
       </article>
     </div>

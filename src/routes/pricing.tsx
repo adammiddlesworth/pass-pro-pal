@@ -160,8 +160,7 @@ function PricingPage() {
           for details.
         </p>
         <p className="mt-4 text-xs text-muted-foreground">
-          Payments are processed by our reseller Paddle.com, who acts as the Merchant of Record.
-          Applicable taxes are calculated at checkout.
+          Payments are securely processed by Stripe. Applicable taxes are calculated at checkout.
         </p>
       </div>
 

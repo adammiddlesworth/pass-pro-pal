@@ -62,8 +62,8 @@ function PrivacyPage() {
           </li>
         </ul>
         <p>
-          Payment card details are collected by our reseller Paddle at checkout and are not stored
-          by Pass Pal.
+          Payment card details are collected and stored by Stripe, our payment processor, and are
+          never seen or stored by Pass Pal.
         </p>
 
         <h2>3. How we use your data and legal bases</h2>
@@ -102,10 +102,10 @@ function PrivacyPage() {
             appropriate data protection terms.
           </li>
           <li>
-            <strong>Paddle.com</strong>, our Merchant of Record, for the sale of the Service,
-            payment processing, tax compliance, invoicing, and handling refunds. See Paddle's{" "}
+            <strong>Stripe</strong>, our payment processor, for payment processing, tax
+            calculation, invoicing, and handling refunds and disputes. See Stripe's{" "}
             <a
-              href="https://www.paddle.com/legal/privacy"
+              href="https://stripe.com/privacy"
               target="_blank"
               rel="noopener noreferrer"
             >

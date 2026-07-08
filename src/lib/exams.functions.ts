@@ -7,7 +7,7 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 const SUPABASE_URL = process.env.SUPABASE_URL!;
 const SUPABASE_PUBLISHABLE_KEY = process.env.SUPABASE_PUBLISHABLE_KEY!;
 
-// Category → Paddle product id map (single source of truth).
+// Category → product id map (single source of truth).
 export const CATEGORY_PRODUCT_IDS: Record<string, string> = {
   real_estate: "real_estate_exam",
   life_health_insurance: "life_health_exam",
