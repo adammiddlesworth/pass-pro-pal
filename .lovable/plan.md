@@ -1,48 +1,53 @@
-## One-time diagnostic + persistent report
+## Hide diagnostic from paid users + strengthen the public funnel
 
-Right now the diagnostic reseeds every Monday and encourages weekly retakes. Change it to a single lifetime attempt per user per track, then always show the same report (with the upgrade CTA) when they return.
+### 1. Hide from paid users
 
-### `src/lib/diagnostic.functions.ts`
+On `src/routes/_authenticated/dashboard.tsx`, only render `<DiagnosticCard>` when the user does NOT have full access:
 
-- Drop the weekly seed. Seed becomes `${userId}:${category}` so the question set is stable per user.
-- `getDiagnosticStatus`: remove the week filter. Rename the return shape to `{ hasTaken, lastCompletedAt, lastScorePct }` (query the user's most recent completed `diagnostic` attempt, no `gte(weekStart)`).
-- `startDiagnostic`: if the user already has a completed diagnostic attempt for this category, throw an error (`"Diagnostic already completed"`). The UI will route them to the report instead of calling this.
-- New `getDiagnosticReport({ category })` server fn (`requireSupabaseAuth`):
-  - Load the user's latest completed diagnostic `user_attempt` for the category (join by looking at attempts of `attempt_type = 'diagnostic'`; we'll add a `category` column — see below — so we can filter cleanly).
-  - Load its `user_answers` joined to `questions → exam_id → exams.exam_tags` so we can recover each question's topic slug/label via `getTopicsForCategory`.
-  - Re-aggregate correct/total, per-topic scores, weakest/strongest, and re-run `calculateReadiness` to return the same `DiagnosticResult` shape used today.
-- `completeDiagnostic`: unchanged scoring; also write `category` on the attempt (see migration).
+```tsx
+{!trackInfo.hasFullAccess && (
+  <div className="mt-6">
+    <DiagnosticCard category={cat} />
+  </div>
+)}
+```
 
-### Migration
+`trackInfo.hasFullAccess` already comes from `getTrackInfo` (`src/lib/track.functions.ts`) and is true whenever the user has a completed purchase. No new data needed.
 
-- Add `category text` (nullable) to `public.user_attempts` so diagnostic attempts can be filtered per track without joining exams (diagnostic rows have `exam_id = null`).
-- Backfill existing diagnostic rows: leave `category` NULL — they were the old weekly-sample flow; treated as "no report available, take a fresh one." (Only affects test data.)
+Also hide the diagnostic entry point from the header/nav for signed-in paid users (if one exists) using the same flag.
 
-### `src/routes/diagnostic.$category.tsx`
+### 2. Dedicated public page for the free diagnostic
 
-- On mount (authed), call `getDiagnosticStatus`. Branch:
-  - `hasTaken === true` → fetch `getDiagnosticReport` and render `ResultView` directly.
-  - Otherwise → render `IntroView` → `QuizView` → `ResultView` as today.
-- `IntroView`: remove the "Retake with a new sample each week" bullet. Replace with "One-time diagnostic — you'll get a personalized report at the end."
-- `ResultView`:
-  - Remove the "Retake diagnostic" buttons (both the has-access and no-access branches).
-  - Keep the upgrade CTA as the primary action for users without access.
-  - For users with access, keep "Browse exams" as the primary action.
-  - Add a small footer note: "This is your diagnostic report — saved for your account."
+`/diagnostic/$category` already exists and already funnels through signup — keep that page as the diagnostic-taking surface. Add a new public picker at `/diagnostic` (`src/routes/diagnostic.index.tsx`) as the shareable "free diagnostic" landing page:
 
-### `src/components/DiagnosticCard.tsx`
+- Hero: "Free licensing exam diagnostic — see where you stand in 10 minutes."
+- Two large cards, one per track (Real Estate, Life & Health Insurance), each linking to `/diagnostic/{category}`.
+- Explains: free, no card required, personalized report at the end.
+- Route-level `head()` with title/description/og:title/og:description for shareability.
 
-- Update copy: remove "New sample every Monday. Retake to see if you're improving." When taken, show "You scored X% — view your full report." Button label becomes "View report" (links to `/diagnostic/{category}`).
-- Intro copy stays "A 20-question sample across every topic. Get your readiness score."
+### 3. Signup → diagnostic → report flow
 
-### Out of scope
+Already wired on `/diagnostic/$category`:
+- Unauth visitor sees "Create free account to start" → goes to `/auth?mode=signup&redirect=/diagnostic/{category}`.
+- After signup, they land back on the page.
 
-- No changes to weekly challenge, exams list, or checkout flow.
-- No new schema beyond the `category` column on `user_attempts`.
+Tighten one thing: on return, auto-start the diagnostic instead of showing the intro card a second time. Add a `?autostart=1` search param that the signup CTA sets; when the page mounts authed and sees that flag, it calls `startDiagnostic` immediately (skipping the intro's "Start diagnostic" click).
+
+After completion, the existing `ResultView` is the report — unchanged.
+
+### 4. Landing-page entry point
+
+On `src/routes/index.tsx` (public landing), add a prominent "Take the free diagnostic" CTA in the hero linking to `/diagnostic`. This is the primary funnel entry for non-paying visitors.
 
 ### Files touched
 
-- `src/lib/diagnostic.functions.ts` (edit)
-- `src/routes/diagnostic.$category.tsx` (edit)
-- `src/components/DiagnosticCard.tsx` (edit)
-- New migration: `alter table public.user_attempts add column category text`
+- `src/routes/_authenticated/dashboard.tsx` (gate `<DiagnosticCard>` on `!hasFullAccess`)
+- `src/routes/__root.tsx` (hide any diagnostic nav link for paid users, if present)
+- `src/routes/diagnostic.index.tsx` (new — public track picker)
+- `src/routes/diagnostic.$category.tsx` (support `?autostart=1`)
+- `src/routes/index.tsx` (add hero CTA to `/diagnostic`)
+
+### Out of scope
+
+- No schema changes.
+- No changes to diagnostic scoring, GHL sync, or checkout.

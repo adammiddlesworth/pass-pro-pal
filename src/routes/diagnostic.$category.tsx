@@ -33,6 +33,8 @@ function DiagnosticPage() {
   const [payload, setPayload] = useState<DiagnosticPayload | null>(null);
   const [result, setResult] = useState<DiagnosticResult | null>(null);
   const [authed, setAuthed] = useState<boolean | null>(null);
+  const [autoStarting, setAutoStarting] = useState(false);
+  const autoStartRef = useRef(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setAuthed(!!data.user));
@@ -54,6 +56,25 @@ function DiagnosticPage() {
     enabled: authed === true && statusQuery.data?.hasTaken === true && !payload && !result,
   });
 
+  // Auto-start the diagnostic the first time an authed, un-taken user lands here.
+  useEffect(() => {
+    if (autoStartRef.current) return;
+    if (authed !== true) return;
+    if (!statusQuery.data) return;
+    if (statusQuery.data.hasTaken) return;
+    if (payload || result) return;
+    autoStartRef.current = true;
+    setAutoStarting(true);
+    startDiagnostic({ data: { category } })
+      .then((p) => setPayload(p))
+      .catch((e: any) => {
+        console.error(e);
+        toast.error(e?.message ?? "Couldn't start diagnostic");
+        autoStartRef.current = false;
+      })
+      .finally(() => setAutoStarting(false));
+  }, [authed, statusQuery.data, category, payload, result]);
+
   if (!CATEGORY_LABEL[category]) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
@@ -71,6 +92,15 @@ function DiagnosticPage() {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
         <p className="text-sm text-muted-foreground">Loading your report…</p>
+      </div>
+    );
+  }
+
+  // Authed but auto-start in flight — show a small loading state instead of the intro.
+  if (authed === true && (autoStarting || statusQuery.isLoading)) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <p className="text-sm text-muted-foreground">Preparing your diagnostic…</p>
       </div>
     );
   }
