@@ -30,6 +30,12 @@ function WeeklyPage() {
     queryKey: ["weekly-status"],
     queryFn: () => getWeeklyMixStatus(),
   });
+  const { data: trackInfo } = useQuery({
+    queryKey: ["active-track"],
+    queryFn: () => getActiveTrack(),
+  });
+  const category = trackInfo?.track ?? undefined;
+  const { openCheckout, checkingOut } = useTrackCheckout(category);
   const [started, setStarted] = useState(false);
 
   if (mixLoading || statusLoading) {
