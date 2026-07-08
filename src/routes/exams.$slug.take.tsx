@@ -5,7 +5,6 @@ import {
   getExamBySlug,
   getExamQuestions,
   getUserCategoryAccess,
-  CATEGORY_PRODUCT_IDS,
 } from "@/lib/exams.functions";
 import {
   startOrResumeAttempt,
@@ -19,8 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Lock, Youtube, ChevronDown, RotateCcw } from "lucide-react";
-import { initializePaddle, getPaddleEnvironment } from "@/lib/paddle";
-import { resolvePaddlePrice } from "@/utils/payments.functions";
+import { useTrackCheckout } from "@/hooks/use-track-checkout";
 import { youtubeEmbedUrl } from "@/lib/youtube";
 import { toast } from "sonner";
 
@@ -44,7 +42,8 @@ function QuizPage() {
   const [submitted, setSubmitted] = useState(false);
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
-  const [checkingOut, setCheckingOut] = useState(false);
+  const { openCheckout, checkingOut } = useTrackCheckout(exam.category);
+  
   const [videoOpen, setVideoOpen] = useState(true);
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [resumedBanner, setResumedBanner] = useState<string | null>(null);
@@ -149,32 +148,7 @@ function QuizPage() {
     window.location.reload();
   };
 
-  const handleUnlock = async () => {
-    const productId = CATEGORY_PRODUCT_IDS[exam.category];
-    if (!productId) return;
-    setCheckingOut(true);
-    try {
-      await initializePaddle();
-      const env = getPaddleEnvironment();
-      const internalPriceId = await resolvePaddlePrice({
-        data: { priceId: `${productId}_price`, environment: env },
-      });
-      (window as any).Paddle.Checkout.open({
-        items: [{ priceId: internalPriceId, quantity: 1 }],
-        customer: user?.email ? { email: user.email } : undefined,
-        customData: {
-          userId: user?.id ?? "",
-          productId,
-          priceId: `${productId}_price`,
-        },
-        settings: {
-          successUrl: `${window.location.origin}/checkout/success`,
-        },
-      });
-    } finally {
-      setCheckingOut(false);
-    }
-  };
+  const handleUnlock = () => openCheckout();
 
   const handleSubmit = async () => {
     setSaving(true);

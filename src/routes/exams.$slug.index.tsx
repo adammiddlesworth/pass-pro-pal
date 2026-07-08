@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useLocation, useSearch } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+
 import {
   getExamBySlug,
   getUserCategoryAccess,
@@ -12,8 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { initializePaddle, getPaddleEnvironment } from "@/lib/paddle";
-import { resolvePaddlePrice } from "@/utils/payments.functions";
+import { useTrackCheckout } from "@/hooks/use-track-checkout";
 import { youtubeEmbedUrl } from "@/lib/youtube";
 import {
   attributionSearchSchema,
@@ -41,7 +40,7 @@ function ExamDetailPage() {
   const location = useLocation();
   const urlAttribution = useSearch({ from: Route.id });
   const attribution = mergeAttribution(urlAttribution);
-  const [checkingOut, setCheckingOut] = useState(false);
+  const { openCheckout, checkingOut } = useTrackCheckout(exam.category);
 
   const { data: access } = useQuery({
     queryKey: ["category-access"],
@@ -54,36 +53,7 @@ function ExamDetailPage() {
   const purchased = !!access?.[exam.category];
   const hasAccess = purchased || isSample;
 
-  const handleBuy = async () => {
-    if (!productId) return;
-    setCheckingOut(true);
-    try {
-      await initializePaddle();
-      const env = getPaddleEnvironment();
-      const internalPriceId = await resolvePaddlePrice({
-        data: { priceId: `${productId}_price`, environment: env },
-      });
-      const successUrl = new URL("/checkout/success", window.location.origin);
-      for (const [key, value] of Object.entries(buildAttributionSearch(attribution))) {
-        successUrl.searchParams.set(key, value);
-      }
-      (window as any).Paddle.Checkout.open({
-        items: [{ priceId: internalPriceId, quantity: 1 }],
-        customer: user?.email ? { email: user.email } : undefined,
-        customData: {
-          userId: user?.id ?? "",
-          productId,
-          priceId: `${productId}_price`,
-          ...attribution,
-        },
-        settings: {
-          successUrl: successUrl.toString(),
-        },
-      });
-    } finally {
-      setCheckingOut(false);
-    }
-  };
+  const handleBuy = () => openCheckout({ attribution });
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">

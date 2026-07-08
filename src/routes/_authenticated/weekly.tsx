@@ -9,10 +9,12 @@ import {
   startWeeklyAttempt,
 } from "@/lib/weekly.functions";
 import { saveUserAnswer, completeAttempt } from "@/lib/exams.functions";
+import { getActiveTrack } from "@/lib/track.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { useTrackCheckout } from "@/hooks/use-track-checkout";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/weekly")({
@@ -28,6 +30,12 @@ function WeeklyPage() {
     queryKey: ["weekly-status"],
     queryFn: () => getWeeklyMixStatus(),
   });
+  const { data: trackInfo } = useQuery({
+    queryKey: ["active-track"],
+    queryFn: () => getActiveTrack(),
+  });
+  const category = trackInfo?.track ?? undefined;
+  const { openCheckout, checkingOut } = useTrackCheckout(category);
   const [started, setStarted] = useState(false);
 
   if (mixLoading || statusLoading) {
@@ -58,9 +66,18 @@ function WeeklyPage() {
               A fresh {mix.questions.length}-question exam every Monday, built from the questions
               learners across the platform miss most. Unlock any exam pack to take it.
             </p>
-            <div className="mt-6">
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {category ? (
+                <Button onClick={() => openCheckout()} disabled={checkingOut}>
+                  {checkingOut ? "Loading…" : "Unlock Weekly Challenge"}
+                </Button>
+              ) : (
+                <Link to="/select-track">
+                  <Button>Choose your track</Button>
+                </Link>
+              )}
               <Link to="/exams" search={{ q: "" }}>
-                <Button>Browse exam packs</Button>
+                <Button variant="outline">Browse exam packs</Button>
               </Link>
             </div>
           </CardContent>

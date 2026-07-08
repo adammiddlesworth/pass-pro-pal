@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useTrackCheckout } from "@/hooks/use-track-checkout";
 import { supabase } from "@/integrations/supabase/client";
 
 const CATEGORY_LABEL: Record<string, string> = {
@@ -240,6 +241,7 @@ function QuizView({ payload, onComplete }: { payload: DiagnosticPayload; onCompl
 }
 
 function ResultView({ result, onRetake }: { result: DiagnosticResult; onRetake: () => void }) {
+  const { openCheckout, checkingOut } = useTrackCheckout(result.category);
   const colorClasses =
     result.color === "green"
       ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/30"
@@ -337,12 +339,14 @@ function ResultView({ result, onRetake }: { result: DiagnosticResult; onRetake: 
                 Learners who practice weekly pass at over 90% on the first try.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-3">
-                <Link to="/exams" search={{ q: "" }}>
-                  <Button size="lg">
-                    Unlock full prep
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
+                <Button
+                  size="lg"
+                  onClick={() => openCheckout({ redirectToAuth: true })}
+                  disabled={checkingOut}
+                >
+                  {checkingOut ? "Loading…" : "Unlock full prep"}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
                 <Button variant="outline" size="lg" onClick={onRetake}>
                   Retake diagnostic
                 </Button>

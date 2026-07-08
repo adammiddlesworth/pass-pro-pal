@@ -7,8 +7,16 @@ import {
 } from "@/lib/weekly.functions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { useTrackCheckout } from "@/hooks/use-track-checkout";
 
-export function WeeklyChallengeCard({ compact = false }: { compact?: boolean }) {
+export function WeeklyChallengeCard({
+  compact = false,
+  category,
+}: {
+  compact?: boolean;
+  category?: string;
+}) {
+  const { openCheckout, checkingOut } = useTrackCheckout(category);
   const { data: mix } = useQuery({
     queryKey: ["weekly-mix"],
     queryFn: () => getCurrentWeeklyMix(),
@@ -55,6 +63,10 @@ export function WeeklyChallengeCard({ compact = false }: { compact?: boolean }) 
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
+            ) : category ? (
+              <Button variant="outline" onClick={() => openCheckout()} disabled={checkingOut}>
+                {checkingOut ? "Loading…" : "Unlock"}
+              </Button>
             ) : (
               <Link to="/exams" search={{ q: "" }}>
                 <Button variant="outline">Unlock</Button>

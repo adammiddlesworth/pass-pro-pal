@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles } from "lucide-react";
+import { useTrackCheckout } from "@/hooks/use-track-checkout";
 
 const CATEGORY_LABELS: Record<string, string> = {
   real_estate: "Real Estate Licensing",
@@ -27,6 +28,7 @@ function ReviewPage() {
   const { category } = Route.useParams();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { openCheckout, checkingOut } = useTrackCheckout(category);
 
   useEffect(() => {
     if (!authLoading && !user) navigate({ to: "/auth" });
@@ -72,9 +74,16 @@ function ReviewPage() {
                 review. You've answered {data.answered} so far.
               </p>
             )}
-            <div className="mt-6">
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {data.reason === "no_access" ? (
+                <Button onClick={() => openCheckout()} disabled={checkingOut}>
+                  {checkingOut ? "Loading…" : "Unlock Full Access"}
+                </Button>
+              ) : null}
               <Link to="/exams">
-                <Button>Back to Exams</Button>
+                <Button variant={data.reason === "no_access" ? "outline" : "default"}>
+                  Back to Exams
+                </Button>
               </Link>
             </div>
           </CardContent>
