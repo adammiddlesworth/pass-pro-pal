@@ -458,6 +458,7 @@ function PersonalizedReviewCard({ category, unlocked }: { category: string; unlo
     queryFn: () => getReadiness({ data: { category } }),
   });
   const weakest = data?.weakestTopics ?? [];
+  const { openCheckout, checkingOut } = useTrackCheckout(category);
 
   return (
     <Card>
@@ -473,11 +474,9 @@ function PersonalizedReviewCard({ category, unlocked }: { category: string; unlo
             <p className="text-sm text-muted-foreground">
               Unlock full access to auto-generate a review from questions you've missed.
             </p>
-            <Link to="/exams" search={{ q: "" }}>
-              <Button variant="outline" size="sm">
-                Upgrade to unlock
-              </Button>
-            </Link>
+            <Button variant="outline" size="sm" onClick={() => openCheckout()} disabled={checkingOut}>
+              {checkingOut ? "Loading…" : "Upgrade to unlock"}
+            </Button>
           </div>
         ) : weakest.length === 0 ? (
           <div className="space-y-3">
