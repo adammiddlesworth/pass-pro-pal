@@ -102,10 +102,10 @@ function PrivacyPage() {
             appropriate data protection terms.
           </li>
           <li>
-            <strong>Paddle.com</strong>, our Merchant of Record, for the sale of the Service,
-            payment processing, tax compliance, invoicing, and handling refunds. See Paddle's{" "}
+            <strong>Stripe</strong>, our payment processor, for payment processing, tax
+            calculation, invoicing, and handling refunds and disputes. See Stripe's{" "}
             <a
-              href="https://www.paddle.com/legal/privacy"
+              href="https://stripe.com/privacy"
               target="_blank"
               rel="noopener noreferrer"
             >
