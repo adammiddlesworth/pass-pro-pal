@@ -125,6 +125,7 @@ import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { checkIsAdmin } from "@/lib/admin.functions";
 import { getActiveTrack, setActiveTrack } from "@/lib/track.functions";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { UserCircle2 } from "lucide-react";
 
 
 
@@ -216,23 +217,16 @@ function Navbar() {
               Exams
             </Link>
           )}
-          {user && (
-            <Link
-              to="/settings"
-              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
-              activeProps={{ className: "text-primary" }}
-            >
-              Settings
-            </Link>
-          )}
           <ThemeToggle />
           {loading ? null : user ? (
-            <button
-              onClick={handleSignOut}
-              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
+            <Link
+              to="/settings"
+              aria-label="Account settings"
+              className="inline-flex h-9 w-9 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-primary"
+              activeProps={{ className: "text-primary" }}
             >
-              Sign out
-            </button>
+              <UserCircle2 className="h-6 w-6" />
+            </Link>
           ) : (
             <Link
               to="/auth"
