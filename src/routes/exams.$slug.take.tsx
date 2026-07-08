@@ -42,6 +42,7 @@ function QuizPage() {
   const [submitted, setSubmitted] = useState(false);
   const [finalScore, setFinalScore] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const { openCheckout, checkingOut } = useTrackCheckout(exam.category);
   const [checkingOut, setCheckingOut] = useState(false);
   const [videoOpen, setVideoOpen] = useState(true);
   const [attemptId, setAttemptId] = useState<string | null>(null);
