@@ -74,9 +74,16 @@ function ReviewPage() {
                 review. You've answered {data.answered} so far.
               </p>
             )}
-            <div className="mt-6">
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              {data.reason === "no_access" ? (
+                <Button onClick={() => openCheckout()} disabled={checkingOut}>
+                  {checkingOut ? "Loading…" : "Unlock Full Access"}
+                </Button>
+              ) : null}
               <Link to="/exams">
-                <Button>Back to Exams</Button>
+                <Button variant={data.reason === "no_access" ? "outline" : "default"}>
+                  Back to Exams
+                </Button>
               </Link>
             </div>
           </CardContent>
