@@ -20,14 +20,6 @@ function getPublicClient() {
   });
 }
 
-function currentWeekStart(): string {
-  const d = new Date();
-  const day = d.getUTCDay();
-  const diff = (day + 6) % 7; // Monday-based
-  const monday = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() - diff));
-  return monday.toISOString().slice(0, 10);
-}
-
 function hashSort(seed: string, id: string): string {
   return createHash("sha256").update(seed + ":" + id).digest("hex");
 }
@@ -56,8 +48,20 @@ export const startDiagnostic = createServerFn({ method: "POST" })
     const topics = getTopicsForCategory(category).filter((t) => !PSEUDO_TOPICS.has(t.slug));
     if (topics.length === 0) throw new Error("No topics configured for this category");
 
-    const weekStart = currentWeekStart();
-    const seed = `${userId}:${category}:${weekStart}`;
+    // One-time diagnostic: block if the user already completed one for this category.
+    const { data: existing } = await supabase
+      .from("user_attempts")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("attempt_type", "diagnostic")
+      .eq("category", category as any)
+      .not("completed_at", "is", null)
+      .limit(1);
+    if ((existing?.length ?? 0) > 0) {
+      throw new Error("Diagnostic already completed");
+    }
+
+    const seed = `${userId}:${category}`;
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -157,6 +161,7 @@ export const startDiagnostic = createServerFn({ method: "POST" })
         exam_id: null,
         total: finalQuestions.length,
         attempt_type: "diagnostic",
+        category: category as any,
         started_at: new Date().toISOString(),
       })
       .select("id")
@@ -181,6 +186,61 @@ export type DiagnosticResult = {
   hasAccess: boolean;
 };
 
+function buildResult(args: {
+  attemptId: string;
+  category: string;
+  answers: { isCorrect: boolean; topicSlug: string | null; topicLabel: string | null }[];
+  hasAccess: boolean;
+}): DiagnosticResult {
+  const total = args.answers.length;
+  const correct = args.answers.filter((a) => a.isCorrect).length;
+  const scorePct = total > 0 ? Math.round((correct / total) * 100) : 0;
+
+  const topicAgg = new Map<string, { name: string; correct: number; total: number }>();
+  for (const a of args.answers) {
+    if (!a.topicSlug || !a.topicLabel) continue;
+    const s = topicAgg.get(a.topicSlug) ?? { name: a.topicLabel, correct: 0, total: 0 };
+    s.total += 1;
+    if (a.isCorrect) s.correct += 1;
+    topicAgg.set(a.topicSlug, s);
+  }
+  const topicScores = Array.from(topicAgg.entries()).map(([slug, s]) => ({
+    slug,
+    name: s.name,
+    score: Math.round((s.correct / s.total) * 100),
+  }));
+
+  const totalTopics = Math.max(
+    1,
+    getTopicsForCategory(args.category).filter((t) => !PSEUDO_TOPICS.has(t.slug)).length
+  );
+
+  const readiness = calculateReadiness({
+    passMark: PASS_MARK,
+    totalTopics,
+    recentExams: [{ score: scorePct }],
+    topics: topicScores.map((t) => ({ name: t.name, score: t.score })),
+  });
+
+  const weakestTopics = [...topicScores].sort((a, b) => a.score - b.score).slice(0, 3);
+  const strongestTopics = [...topicScores].sort((a, b) => b.score - a.score).slice(0, 3);
+
+  return {
+    attemptId: args.attemptId,
+    category: args.category,
+    scorePct,
+    correct,
+    total,
+    readiness: readiness.readiness,
+    status: readiness.status,
+    color: readiness.color,
+    reason: readiness.reason,
+    weakestTopics,
+    strongestTopics,
+    hasAccess: args.hasAccess,
+  };
+}
+
 export const completeDiagnostic = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -194,7 +254,6 @@ export const completeDiagnostic = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const total = data.answers.length;
     const correct = data.answers.filter((a) => a.isCorrect).length;
-    const scorePct = total > 0 ? Math.round((correct / total) * 100) : 0;
 
     // Save answers (best effort).
     if (total > 0) {
@@ -212,38 +271,13 @@ export const completeDiagnostic = createServerFn({ method: "POST" })
 
     await supabase
       .from("user_attempts")
-      .update({ score: correct, total, completed_at: new Date().toISOString() })
+      .update({
+        score: correct,
+        total,
+        category: data.category as any,
+        completed_at: new Date().toISOString(),
+      })
       .eq("id", data.attemptId);
-
-    // Per-topic accuracy.
-    const topicAgg = new Map<string, { name: string; correct: number; total: number }>();
-    for (const a of data.answers) {
-      if (!a.topicSlug || !a.topicLabel) continue;
-      const s = topicAgg.get(a.topicSlug) ?? { name: a.topicLabel, correct: 0, total: 0 };
-      s.total += 1;
-      if (a.isCorrect) s.correct += 1;
-      topicAgg.set(a.topicSlug, s);
-    }
-    const topicScores = Array.from(topicAgg.entries()).map(([slug, s]) => ({
-      slug,
-      name: s.name,
-      score: Math.round((s.correct / s.total) * 100),
-    }));
-
-    const totalTopics = Math.max(
-      1,
-      getTopicsForCategory(data.category).filter((t) => !PSEUDO_TOPICS.has(t.slug)).length
-    );
-
-    const readiness = calculateReadiness({
-      passMark: PASS_MARK,
-      totalTopics,
-      recentExams: [{ score: scorePct }],
-      topics: topicScores.map((t) => ({ name: t.name, score: t.score })),
-    });
-
-    const weakestTopics = [...topicScores].sort((a, b) => a.score - b.score).slice(0, 3);
-    const strongestTopics = [...topicScores].sort((a, b) => b.score - a.score).slice(0, 3);
 
     // Check purchase status for CTA copy.
     const { data: purchases } = await supabase
@@ -253,6 +287,13 @@ export const completeDiagnostic = createServerFn({ method: "POST" })
       .eq("status", "completed")
       .limit(1);
     const hasAccess = (purchases?.length ?? 0) > 0;
+
+    const result = buildResult({
+      attemptId: data.attemptId,
+      category: data.category,
+      answers: data.answers,
+      hasAccess,
+    });
 
     // Best-effort GHL sync — never fails the request.
     try {
@@ -265,14 +306,14 @@ export const completeDiagnostic = createServerFn({ method: "POST" })
           email,
           tags: [
             "diagnostic-completed",
-            `readiness-${readiness.color}`,
+            `readiness-${result.color}`,
             `track-${data.category}`,
           ],
           customFields: {
             passpal_track: data.category,
-            passpal_readiness_score: readiness.readiness,
-            passpal_diagnostic_status: readiness.status,
-            passpal_weak_topics: weakestTopics.map((t) => t.name).join(", "),
+            passpal_readiness_score: result.readiness,
+            passpal_diagnostic_status: result.status,
+            passpal_weak_topics: result.weakestTopics.map((t) => t.name).join(", "),
             passpal_last_activity_at: new Date().toISOString(),
           },
           source: "PassPal diagnostic",
@@ -282,26 +323,12 @@ export const completeDiagnostic = createServerFn({ method: "POST" })
       console.error("[ghl] diagnostic sync error", e);
     }
 
-    return {
-      attemptId: data.attemptId,
-      category: data.category,
-      scorePct,
-      correct,
-      total,
-      readiness: readiness.readiness,
-      status: readiness.status,
-      color: readiness.color,
-      reason: readiness.reason,
-      weakestTopics,
-      strongestTopics,
-      hasAccess,
-    };
+    return result;
   });
 
 export type DiagnosticStatus = {
-  hasTakenThisWeek: boolean;
+  hasTaken: boolean;
   lastScorePct: number | null;
-  lastReadiness: number | null;
   lastCompletedAt: string | null;
 };
 
@@ -310,28 +337,83 @@ export const getDiagnosticStatus = createServerFn({ method: "GET" })
   .inputValidator((data: { category: string }) => data)
   .handler(async ({ data, context }): Promise<DiagnosticStatus> => {
     const { supabase, userId } = context;
-    const weekStart = currentWeekStart();
-    const weekStartIso = new Date(weekStart + "T00:00:00Z").toISOString();
 
     const { data: rows } = await supabase
       .from("user_attempts")
       .select("score, total, completed_at")
       .eq("user_id", userId)
       .eq("attempt_type", "diagnostic")
+      .eq("category", data.category as any)
       .not("completed_at", "is", null)
-      .gte("completed_at", weekStartIso)
       .order("completed_at", { ascending: false })
       .limit(1);
 
     const last = (rows || [])[0];
     if (!last) {
-      return { hasTakenThisWeek: false, lastScorePct: null, lastReadiness: null, lastCompletedAt: null };
+      return { hasTaken: false, lastScorePct: null, lastCompletedAt: null };
     }
     const pct = last.total ? Math.round(((last.score ?? 0) / last.total) * 100) : 0;
     return {
-      hasTakenThisWeek: true,
+      hasTaken: true,
       lastScorePct: pct,
-      lastReadiness: null,
       lastCompletedAt: last.completed_at,
     };
+  });
+
+export const getDiagnosticReport = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((data: { category: string }) => data)
+  .handler(async ({ data, context }): Promise<DiagnosticResult | null> => {
+    const { supabase, userId } = context;
+
+    const { data: attempts } = await supabase
+      .from("user_attempts")
+      .select("id, completed_at")
+      .eq("user_id", userId)
+      .eq("attempt_type", "diagnostic")
+      .eq("category", data.category as any)
+      .not("completed_at", "is", null)
+      .order("completed_at", { ascending: false })
+      .limit(1);
+
+    const attempt = (attempts || [])[0];
+    if (!attempt) return null;
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+
+    const { data: answerRows } = await supabaseAdmin
+      .from("user_answers")
+      .select("is_correct, question_id, questions(exam_id, exams(exam_tags(tag)))")
+      .eq("attempt_id", attempt.id);
+
+    const topics = getTopicsForCategory(data.category);
+    const topicBySlug = new Map(topics.map((t) => [t.slug, t.label] as const));
+
+    const mapped = (answerRows || []).map((r: any) => {
+      const tags: string[] =
+        r.questions?.exams?.exam_tags?.map((t: any) => t.tag) ?? [];
+      const topicSlug =
+        tags.find((tag) => topicBySlug.has(tag) && !PSEUDO_TOPICS.has(tag)) ?? null;
+      const topicLabel = topicSlug ? topicBySlug.get(topicSlug) ?? null : null;
+      return {
+        isCorrect: !!r.is_correct,
+        topicSlug,
+        topicLabel,
+      };
+    });
+
+    const { data: purchases } = await supabase
+      .from("purchases")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("status", "completed")
+      .limit(1);
+    const hasAccess = (purchases?.length ?? 0) > 0;
+
+    return buildResult({
+      attemptId: attempt.id,
+      category: data.category,
+      answers: mapped,
+      hasAccess,
+    });
   });
