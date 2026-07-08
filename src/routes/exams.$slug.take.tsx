@@ -5,7 +5,6 @@ import {
   getExamBySlug,
   getExamQuestions,
   getUserCategoryAccess,
-  CATEGORY_PRODUCT_IDS,
 } from "@/lib/exams.functions";
 import {
   startOrResumeAttempt,
@@ -19,8 +18,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Lock, Youtube, ChevronDown, RotateCcw } from "lucide-react";
-import { initializePaddle, getPaddleEnvironment } from "@/lib/paddle";
-import { resolvePaddlePrice } from "@/utils/payments.functions";
+import { useTrackCheckout } from "@/hooks/use-track-checkout";
 import { youtubeEmbedUrl } from "@/lib/youtube";
 import { toast } from "sonner";
 
