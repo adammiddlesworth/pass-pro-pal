@@ -78,18 +78,10 @@ function TermsPage() {
 
         <h2>6. Payments, billing, and taxes</h2>
         <p>
-          Our order process is conducted by our online reseller <strong>Paddle.com</strong>.
-          Paddle.com is the Merchant of Record for all our orders. Paddle provides all customer
-          service inquiries and handles returns. The payment, billing, tax, cancellation, and
-          refund mechanics for your purchase are governed by Paddle's{" "}
-          <a
-            href="https://www.paddle.com/legal/checkout-buyer-terms"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Checkout Buyer Terms
-          </a>
-          . Applicable taxes are calculated and collected at checkout.
+          Payments are processed by <strong>Stripe</strong>, our payment provider. Card details
+          are collected and stored by Stripe and are never seen or stored by Pass Pal. Applicable
+          taxes are calculated and collected at checkout, in accordance with the tax rules of
+          your jurisdiction.
         </p>
         <p>
           Purchases are one-time payments granting access to the applicable exam pack. See our{" "}
