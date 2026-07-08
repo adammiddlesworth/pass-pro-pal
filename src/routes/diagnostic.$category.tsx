@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { useTrackCheckout } from "@/hooks/use-track-checkout";
 import { supabase } from "@/integrations/supabase/client";
 
 const CATEGORY_LABEL: Record<string, string> = {
