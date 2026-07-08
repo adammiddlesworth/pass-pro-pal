@@ -148,32 +148,7 @@ function QuizPage() {
     window.location.reload();
   };
 
-  const handleUnlock = async () => {
-    const productId = CATEGORY_PRODUCT_IDS[exam.category];
-    if (!productId) return;
-    setCheckingOut(true);
-    try {
-      await initializePaddle();
-      const env = getPaddleEnvironment();
-      const internalPriceId = await resolvePaddlePrice({
-        data: { priceId: `${productId}_price`, environment: env },
-      });
-      (window as any).Paddle.Checkout.open({
-        items: [{ priceId: internalPriceId, quantity: 1 }],
-        customer: user?.email ? { email: user.email } : undefined,
-        customData: {
-          userId: user?.id ?? "",
-          productId,
-          priceId: `${productId}_price`,
-        },
-        settings: {
-          successUrl: `${window.location.origin}/checkout/success`,
-        },
-      });
-    } finally {
-      setCheckingOut(false);
-    }
-  };
+  const handleUnlock = () => openCheckout();
 
   const handleSubmit = async () => {
     setSaving(true);
