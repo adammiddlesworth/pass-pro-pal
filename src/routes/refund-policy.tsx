@@ -6,12 +6,12 @@ export const Route = createFileRoute("/refund-policy")({
       { title: "Refund Policy — PassPal" },
       {
         name: "description",
-        content: "PassPal offers a 30-day money-back guarantee on all purchases.",
+        content: "PassPal pass-on-the-first-try guarantee: if you don't pass, we'll refund your purchase.",
       },
       { property: "og:title", content: "Refund Policy — PassPal" },
       {
         property: "og:description",
-        content: "30-day money-back guarantee. Full refund within 30 days of purchase.",
+        content: "Pass on the first try guarantee. If you don't pass your exam, we'll refund your purchase.",
       },
       { name: "robots", content: "index,follow" },
     ],
