@@ -18,6 +18,7 @@ import { Route as ReviewCategoryRouteImport } from './routes/review.$category'
 import { Route as DiagnosticCategoryRouteImport } from './routes/diagnostic.$category'
 import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
 import { Route as AuthenticatedWeeklyRouteImport } from './routes/_authenticated/weekly'
+import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSelectTrackRouteImport } from './routes/_authenticated/select-track'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as ExamsSlugIndexRouteImport } from './routes/exams.$slug.index'
@@ -71,6 +72,11 @@ const AuthenticatedWeeklyRoute = AuthenticatedWeeklyRouteImport.update({
   path: '/weekly',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedSettingsRoute = AuthenticatedSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedSelectTrackRoute =
   AuthenticatedSelectTrackRouteImport.update({
     id: '/select-track',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/start': typeof StartRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/select-track': typeof AuthenticatedSelectTrackRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/weekly': typeof AuthenticatedWeeklyRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/diagnostic/$category': typeof DiagnosticCategoryRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/start': typeof StartRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/select-track': typeof AuthenticatedSelectTrackRoute
+  '/settings': typeof AuthenticatedSettingsRoute
   '/weekly': typeof AuthenticatedWeeklyRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/diagnostic/$category': typeof DiagnosticCategoryRoute
@@ -159,6 +167,7 @@ export interface FileRoutesById {
   '/start': typeof StartRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/select-track': typeof AuthenticatedSelectTrackRoute
+  '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/weekly': typeof AuthenticatedWeeklyRoute
   '/checkout/success': typeof CheckoutSuccessRoute
   '/diagnostic/$category': typeof DiagnosticCategoryRoute
@@ -179,6 +188,7 @@ export interface FileRouteTypes {
     | '/start'
     | '/dashboard'
     | '/select-track'
+    | '/settings'
     | '/weekly'
     | '/checkout/success'
     | '/diagnostic/$category'
@@ -197,6 +207,7 @@ export interface FileRouteTypes {
     | '/start'
     | '/dashboard'
     | '/select-track'
+    | '/settings'
     | '/weekly'
     | '/checkout/success'
     | '/diagnostic/$category'
@@ -216,6 +227,7 @@ export interface FileRouteTypes {
     | '/start'
     | '/_authenticated/dashboard'
     | '/_authenticated/select-track'
+    | '/_authenticated/settings'
     | '/_authenticated/weekly'
     | '/checkout/success'
     | '/diagnostic/$category'
@@ -308,6 +320,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedWeeklyRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/settings': {
+      id: '/_authenticated/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof AuthenticatedSettingsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/select-track': {
       id: '/_authenticated/select-track'
       path: '/select-track'
@@ -370,6 +389,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedSelectTrackRoute: typeof AuthenticatedSelectTrackRoute
+  AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedWeeklyRoute: typeof AuthenticatedWeeklyRoute
   AuthenticatedAdminExamsRoute: typeof AuthenticatedAdminExamsRoute
   AuthenticatedExamsIndexRoute: typeof AuthenticatedExamsIndexRoute
@@ -378,6 +398,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedSelectTrackRoute: AuthenticatedSelectTrackRoute,
+  AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedWeeklyRoute: AuthenticatedWeeklyRoute,
   AuthenticatedAdminExamsRoute: AuthenticatedAdminExamsRoute,
   AuthenticatedExamsIndexRoute: AuthenticatedExamsIndexRoute,

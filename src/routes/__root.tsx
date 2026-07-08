@@ -216,6 +216,15 @@ function Navbar() {
               Exams
             </Link>
           )}
+          {user && (
+            <Link
+              to="/settings"
+              className="text-sm font-semibold text-muted-foreground transition-colors hover:text-primary"
+              activeProps={{ className: "text-primary" }}
+            >
+              Settings
+            </Link>
+          )}
           <ThemeToggle />
           {loading ? null : user ? (
             <button
