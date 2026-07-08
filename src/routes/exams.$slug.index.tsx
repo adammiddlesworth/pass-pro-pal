@@ -12,8 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { initializePaddle, getPaddleEnvironment } from "@/lib/paddle";
-import { resolvePaddlePrice } from "@/utils/payments.functions";
+import { useTrackCheckout } from "@/hooks/use-track-checkout";
 import { youtubeEmbedUrl } from "@/lib/youtube";
 import {
   attributionSearchSchema,
