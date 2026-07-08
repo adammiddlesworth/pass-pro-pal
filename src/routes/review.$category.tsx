@@ -28,6 +28,7 @@ function ReviewPage() {
   const { category } = Route.useParams();
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
+  const { openCheckout, checkingOut } = useTrackCheckout(category);
 
   useEffect(() => {
     if (!authLoading && !user) navigate({ to: "/auth" });
