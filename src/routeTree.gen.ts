@@ -14,6 +14,7 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as DiagnosticIndexRouteImport } from './routes/diagnostic.index'
 import { Route as ReviewCategoryRouteImport } from './routes/review.$category'
 import { Route as DiagnosticCategoryRouteImport } from './routes/diagnostic.$category'
 import { Route as CheckoutSuccessRouteImport } from './routes/checkout.success'
@@ -50,6 +51,11 @@ const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DiagnosticIndexRoute = DiagnosticIndexRouteImport.update({
+  id: '/diagnostic/',
+  path: '/diagnostic/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReviewCategoryRoute = ReviewCategoryRouteImport.update({
@@ -132,6 +138,7 @@ export interface FileRoutesByFullPath {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/diagnostic/$category': typeof DiagnosticCategoryRoute
   '/review/$category': typeof ReviewCategoryRoute
+  '/diagnostic/': typeof DiagnosticIndexRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
@@ -151,6 +158,7 @@ export interface FileRoutesByTo {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/diagnostic/$category': typeof DiagnosticCategoryRoute
   '/review/$category': typeof ReviewCategoryRoute
+  '/diagnostic': typeof DiagnosticIndexRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/checkout/success': typeof CheckoutSuccessRoute
   '/diagnostic/$category': typeof DiagnosticCategoryRoute
   '/review/$category': typeof ReviewCategoryRoute
+  '/diagnostic/': typeof DiagnosticIndexRoute
   '/_authenticated/admin/exams': typeof AuthenticatedAdminExamsRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/diagnostic/$category'
     | '/review/$category'
+    | '/diagnostic/'
     | '/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
@@ -212,6 +222,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/diagnostic/$category'
     | '/review/$category'
+    | '/diagnostic'
     | '/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
@@ -232,6 +243,7 @@ export interface FileRouteTypes {
     | '/checkout/success'
     | '/diagnostic/$category'
     | '/review/$category'
+    | '/diagnostic/'
     | '/_authenticated/admin/exams'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
@@ -249,6 +261,7 @@ export interface RootRouteChildren {
   CheckoutSuccessRoute: typeof CheckoutSuccessRoute
   DiagnosticCategoryRoute: typeof DiagnosticCategoryRoute
   ReviewCategoryRoute: typeof ReviewCategoryRoute
+  DiagnosticIndexRoute: typeof DiagnosticIndexRoute
   ExamsSlugTakeRoute: typeof ExamsSlugTakeRoute
   PreviewExamSlugRoute: typeof PreviewExamSlugRoute
   ExamsSlugIndexRoute: typeof ExamsSlugIndexRoute
@@ -290,6 +303,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/diagnostic/': {
+      id: '/diagnostic/'
+      path: '/diagnostic'
+      fullPath: '/diagnostic/'
+      preLoaderRoute: typeof DiagnosticIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/review/$category': {
@@ -416,6 +436,7 @@ const rootRouteChildren: RootRouteChildren = {
   CheckoutSuccessRoute: CheckoutSuccessRoute,
   DiagnosticCategoryRoute: DiagnosticCategoryRoute,
   ReviewCategoryRoute: ReviewCategoryRoute,
+  DiagnosticIndexRoute: DiagnosticIndexRoute,
   ExamsSlugTakeRoute: ExamsSlugTakeRoute,
   PreviewExamSlugRoute: PreviewExamSlugRoute,
   ExamsSlugIndexRoute: ExamsSlugIndexRoute,
