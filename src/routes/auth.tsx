@@ -98,7 +98,6 @@ function AuthPage() {
           import("@/lib/ghl-sync.functions")
             .then(({ syncSignupToGhl }) => syncSignupToGhl())
             .catch((e) => console.error("[ghl] signup sync error", e));
-          navigate({ to: returnUrl, search: returnSearch });
           goToReturnUrl();
         } else {
           setInfo("Check your email to confirm your account, then sign in.");
