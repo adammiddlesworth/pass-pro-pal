@@ -240,6 +240,7 @@ function QuizView({ payload, onComplete }: { payload: DiagnosticPayload; onCompl
 }
 
 function ResultView({ result, onRetake }: { result: DiagnosticResult; onRetake: () => void }) {
+  const { openCheckout, checkingOut } = useTrackCheckout(result.category);
   const colorClasses =
     result.color === "green"
       ? "text-emerald-600 bg-emerald-500/10 border-emerald-500/30"
