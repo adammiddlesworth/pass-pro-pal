@@ -13,6 +13,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { Sparkles } from "lucide-react";
+import { useTrackCheckout } from "@/hooks/use-track-checkout";
 
 const CATEGORY_LABELS: Record<string, string> = {
   real_estate: "Real Estate Licensing",
