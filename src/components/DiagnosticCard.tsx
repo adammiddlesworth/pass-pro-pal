@@ -11,7 +11,7 @@ export function DiagnosticCard({ category }: { category: string }) {
     queryFn: () => getDiagnosticStatus({ data: { category } }),
   });
 
-  const taken = !!status?.hasTakenThisWeek;
+  const taken = !!status?.hasTaken;
 
   return (
     <Card className="border-primary/30 bg-gradient-to-br from-primary/5 via-transparent to-transparent">
@@ -27,12 +27,12 @@ export function DiagnosticCard({ category }: { category: string }) {
               </div>
               <p className="mt-1 text-base font-semibold leading-tight">
                 {taken
-                  ? `You scored ${status?.lastScorePct}% this week`
+                  ? `You scored ${status?.lastScorePct}% — view your full report`
                   : "See where you stand in ~10 minutes"}
               </p>
               <p className="mt-0.5 text-sm text-muted-foreground">
                 {taken
-                  ? "New sample every Monday. Retake to see if you're improving."
+                  ? "Your diagnostic report is saved to your account."
                   : "A 20-question sample across every topic. Get your readiness score."}
               </p>
             </div>
@@ -40,7 +40,7 @@ export function DiagnosticCard({ category }: { category: string }) {
           <div className="shrink-0">
             <Link to="/diagnostic/$category" params={{ category }}>
               <Button variant={taken ? "outline" : "default"}>
-                {taken ? "Retake" : "Take diagnostic"}
+                {taken ? "View report" : "Take diagnostic"}
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </Link>

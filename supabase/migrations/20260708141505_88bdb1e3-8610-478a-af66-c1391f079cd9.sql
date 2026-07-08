@@ -1,0 +1,1 @@
+ALTER TABLE public.user_attempts ADD COLUMN IF NOT EXISTS category public.exam_category;

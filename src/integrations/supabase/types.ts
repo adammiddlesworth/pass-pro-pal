@@ -291,6 +291,7 @@ export type Database = {
       user_attempts: {
         Row: {
           attempt_type: string
+          category: Database["public"]["Enums"]["exam_category"] | null
           completed_at: string | null
           created_at: string
           exam_id: string | null
@@ -303,6 +304,7 @@ export type Database = {
         }
         Insert: {
           attempt_type?: string
+          category?: Database["public"]["Enums"]["exam_category"] | null
           completed_at?: string | null
           created_at?: string
           exam_id?: string | null
@@ -315,6 +317,7 @@ export type Database = {
         }
         Update: {
           attempt_type?: string
+          category?: Database["public"]["Enums"]["exam_category"] | null
           completed_at?: string | null
           created_at?: string
           exam_id?: string | null

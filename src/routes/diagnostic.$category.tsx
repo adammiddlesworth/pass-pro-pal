@@ -1,10 +1,12 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Sparkles, PlayCircle, Trophy, ArrowRight, Target, ChevronRight, UserPlus } from "lucide-react";
 import {
   startDiagnostic,
   completeDiagnostic,
+  getDiagnosticStatus,
+  getDiagnosticReport,
   type DiagnosticPayload,
   type DiagnosticResult,
 } from "@/lib/diagnostic.functions";
@@ -40,6 +42,18 @@ function DiagnosticPage() {
     return () => sub.subscription.unsubscribe();
   }, []);
 
+  const statusQuery = useQuery({
+    queryKey: ["diagnostic-status", category],
+    queryFn: () => getDiagnosticStatus({ data: { category } }),
+    enabled: authed === true,
+  });
+
+  const reportQuery = useQuery({
+    queryKey: ["diagnostic-report", category],
+    queryFn: () => getDiagnosticReport({ data: { category } }),
+    enabled: authed === true && statusQuery.data?.hasTaken === true && !payload && !result,
+  });
+
   if (!CATEGORY_LABEL[category]) {
     return (
       <div className="mx-auto max-w-3xl px-4 py-12">
@@ -48,8 +62,19 @@ function DiagnosticPage() {
     );
   }
 
-  if (result) return <ResultView result={result} onRetake={() => { setPayload(null); setResult(null); }} />;
+  if (result) return <ResultView result={result} />;
   if (payload) return <QuizView payload={payload} onComplete={(r) => setResult(r)} />;
+
+  // If already taken, show the saved report.
+  if (authed === true && statusQuery.data?.hasTaken) {
+    if (reportQuery.data) return <ResultView result={reportQuery.data} />;
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <p className="text-sm text-muted-foreground">Loading your report…</p>
+      </div>
+    );
+  }
+
   return <IntroView category={category} authed={authed} onStart={(p) => setPayload(p)} />;
 }
 
@@ -101,7 +126,7 @@ function IntroView({
             </li>
             <li className="flex items-start gap-2">
               <ChevronRight className="mt-0.5 h-4 w-4 text-primary" />
-              Retake with a new sample each week.
+              One-time diagnostic — you'll get a personalized report at the end.
             </li>
           </ul>
           {authed === false ? (
@@ -240,7 +265,7 @@ function QuizView({ payload, onComplete }: { payload: DiagnosticPayload; onCompl
   );
 }
 
-function ResultView({ result, onRetake }: { result: DiagnosticResult; onRetake: () => void }) {
+function ResultView({ result }: { result: DiagnosticResult }) {
   const { openCheckout, checkingOut } = useTrackCheckout(result.category);
   const colorClasses =
     result.color === "green"
@@ -255,7 +280,7 @@ function ResultView({ result, onRetake }: { result: DiagnosticResult; onRetake: 
         <div className="mx-auto mb-3 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
           <Trophy className="h-7 w-7" />
         </div>
-        <h1 className="text-3xl font-bold">Your diagnostic results</h1>
+        <h1 className="text-3xl font-bold">Your diagnostic report</h1>
         <p className="mt-2 text-muted-foreground">
           {CATEGORY_LABEL[result.category]} · {result.correct} / {result.total} correct ({result.scorePct}%)
         </p>
@@ -326,9 +351,6 @@ function ResultView({ result, onRetake }: { result: DiagnosticResult; onRetake: 
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
-                <Button variant="outline" size="lg" onClick={onRetake}>
-                  Retake diagnostic
-                </Button>
               </div>
             </>
           ) : (
@@ -347,20 +369,15 @@ function ResultView({ result, onRetake }: { result: DiagnosticResult; onRetake: 
                   {checkingOut ? "Loading…" : "Unlock full prep"}
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
-                <Button variant="outline" size="lg" onClick={onRetake}>
-                  Retake diagnostic
-                </Button>
               </div>
-              <p className="mt-4 text-xs text-muted-foreground">
-                Prefer to try a full exam first?{" "}
-                <Link to="/exams" search={{ q: "" }} className="text-primary hover:underline">
-                  Take the free sample exam →
-                </Link>
-              </p>
             </>
           )}
         </CardContent>
       </Card>
+
+      <p className="mt-6 text-center text-xs text-muted-foreground">
+        This is your diagnostic report — saved to your account.
+      </p>
     </div>
   );
 }
