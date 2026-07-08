@@ -29,15 +29,14 @@ type Plan = {
   name: string;
   price: string;
   tagline: string;
-  productId: "real_estate_exam" | "life_health_exam" | "exam_bundle";
+  productId: "real_estate_exam" | "life_health_exam";
   features: string[];
-  highlight?: boolean;
 };
 
 const plans: Plan[] = [
   {
     name: "Real Estate Exam",
-    price: "$19.99",
+    price: "$49.99",
     tagline: "Everything you need for the real estate licensing exam.",
     productId: "real_estate_exam",
     features: [
@@ -49,22 +48,8 @@ const plans: Plan[] = [
     ],
   },
   {
-    name: "Exam Bundle",
-    price: "$29.99",
-    tagline: "Both licensing tracks. Best value.",
-    productId: "exam_bundle",
-    highlight: true,
-    features: [
-      "Real Estate exam pack",
-      "Life & Health Insurance exam pack",
-      "Weekly challenge access",
-      "Detailed performance reports",
-      "Lifetime access — pay once",
-    ],
-  },
-  {
     name: "Life & Health Insurance",
-    price: "$19.99",
+    price: "$49.99",
     tagline: "Full prep for the life & health insurance exam.",
     productId: "life_health_exam",
     features: [
