@@ -120,13 +120,22 @@ function AuthPage() {
       <Card className="w-full max-w-sm">
         <CardHeader className="space-y-2">
           <CardTitle className="text-center">
-            {fromGhl ? "Welcome! Let's get you set up" : "Welcome to PassPal"}
+            {isDiagnostic
+              ? "See your readiness score"
+              : fromGhl
+              ? "Welcome! Let's get you set up"
+              : "Welcome to PassPal"}
           </CardTitle>
-          {fromGhl && (
+          {isDiagnostic ? (
+            <p className="text-center text-sm text-muted-foreground">
+              Create a free account to take the 10-minute diagnostic.
+            </p>
+          ) : fromGhl ? (
             <p className="text-center text-sm text-muted-foreground">
               Thanks for joining from GHL. Create your account to start studying.
             </p>
-          )}
+          ) : null}
+
         </CardHeader>
         <CardContent className="space-y-4">
           <Button onClick={handleGoogleSignIn} variant="outline" className="w-full">
