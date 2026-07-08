@@ -339,12 +339,14 @@ function ResultView({ result, onRetake }: { result: DiagnosticResult; onRetake: 
                 Learners who practice weekly pass at over 90% on the first try.
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-3">
-                <Link to="/exams" search={{ q: "" }}>
-                  <Button size="lg">
-                    Unlock full prep
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </Link>
+                <Button
+                  size="lg"
+                  onClick={() => openCheckout({ redirectToAuth: true })}
+                  disabled={checkingOut}
+                >
+                  {checkingOut ? "Loading…" : "Unlock full prep"}
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
                 <Button variant="outline" size="lg" onClick={onRetake}>
                   Retake diagnostic
                 </Button>
