@@ -19,7 +19,7 @@ const CATEGORY_LABEL: Record<string, string> = {
   life_health_insurance: "Life & Health Insurance",
 };
 
-export const Route = createFileRoute("/_authenticated/diagnostic/$category")({
+export const Route = createFileRoute("/diagnostic/$category")({
   component: DiagnosticPage,
 });
 
