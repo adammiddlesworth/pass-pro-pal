@@ -1,7 +1,7 @@
 import { createFileRoute, Link, useLocation, useSearch } from "@tanstack/react-router";
 import { zodValidator } from "@tanstack/zod-adapter";
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+
 import {
   getExamBySlug,
   getUserCategoryAccess,
