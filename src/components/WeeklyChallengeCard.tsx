@@ -63,6 +63,10 @@ export function WeeklyChallengeCard({
                   <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               </Link>
+            ) : category ? (
+              <Button variant="outline" onClick={() => openCheckout()} disabled={checkingOut}>
+                {checkingOut ? "Loading…" : "Unlock"}
+              </Button>
             ) : (
               <Link to="/exams" search={{ q: "" }}>
                 <Button variant="outline">Unlock</Button>
