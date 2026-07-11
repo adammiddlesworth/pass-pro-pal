@@ -254,7 +254,7 @@ function QuizView({ payload, onComplete }: { payload: DiagnosticPayload; onCompl
         <CardContent className="p-6">
           <p className="mb-6 text-lg font-medium">{current.text}</p>
           <div className="space-y-3">
-            {current.answers.map((a) => {
+            {current.answers.map((a, i) => {
               const isSelected = chosen === a.id;
               return (
                 <button
@@ -266,6 +266,7 @@ function QuizView({ payload, onComplete }: { payload: DiagnosticPayload; onCompl
                       : "border-muted hover:border-primary hover:bg-primary/5"
                   }`}
                 >
+                  <span className="mr-2 font-semibold">{String.fromCharCode(65 + i)}.</span>
                   {a.text}
                 </button>
               );
