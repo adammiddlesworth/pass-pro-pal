@@ -105,13 +105,14 @@ function PreviewQuiz() {
                   </div>
                   <p className="mb-4 font-medium">{q.text}</p>
                   <div className="space-y-2">
-                    {q.answers.map((a) => {
+                    {q.answers.map((a, i) => {
                       const isSelected = selected === a.id;
                       let borderClass = "border-muted";
                       if (a.is_correct) borderClass = "border-green-500 bg-green-50";
                       else if (isSelected) borderClass = "border-red-500 bg-red-50";
                       return (
                         <div key={a.id} className={`rounded-md border px-4 py-2 text-sm ${borderClass}`}>
+                          <span className="mr-2 font-semibold">{String.fromCharCode(65 + i)}.</span>
                           {a.text}
                           {a.is_correct && <span className="ml-2 text-xs text-green-700">(Correct)</span>}
                         </div>
@@ -147,7 +148,7 @@ function PreviewQuiz() {
         <CardContent className="p-6">
           <p className="mb-6 text-lg font-medium">{currentQuestion.text}</p>
           <div className="space-y-3">
-            {currentQuestion.answers.map((a) => {
+            {currentQuestion.answers.map((a, i) => {
               const selectedId = selectedAnswers[currentQuestion.id];
               const answered = !!selectedId;
               const isSelected = selectedId === a.id;
@@ -166,7 +167,10 @@ function PreviewQuiz() {
                   className={`w-full rounded-md border px-4 py-3 text-left text-sm transition-colors ${stateClass} ${answered ? "cursor-default" : ""}`}
                 >
                   <span className="flex items-center justify-between gap-2">
-                    <span>{a.text}</span>
+                    <span>
+                      <span className="mr-2 font-semibold">{String.fromCharCode(65 + i)}.</span>
+                      {a.text}
+                    </span>
                     {answered && a.id === correctId && <span className="text-xs font-semibold text-green-700">Correct</span>}
                     {answered && isSelected && !a.is_correct && <span className="text-xs font-semibold text-red-700">Your answer</span>}
                   </span>
