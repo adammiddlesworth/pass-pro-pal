@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Lock, Youtube, ChevronDown, RotateCcw } from "lucide-react";
+import { Lock, Youtube, ChevronDown, RotateCcw, Timer, AlertCircle } from "lucide-react";
 import { useTrackCheckout } from "@/hooks/use-track-checkout";
 import { youtubeEmbedUrl } from "@/lib/youtube";
 import { toast } from "sonner";
