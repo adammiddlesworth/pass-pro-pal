@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
-import { Lock, Youtube, ChevronDown, RotateCcw } from "lucide-react";
+import { Lock, Youtube, ChevronDown, RotateCcw, Timer, AlertCircle } from "lucide-react";
 import { useTrackCheckout } from "@/hooks/use-track-checkout";
 import { youtubeEmbedUrl } from "@/lib/youtube";
 import { toast } from "sonner";
@@ -47,7 +47,14 @@ function QuizPage() {
   const [videoOpen, setVideoOpen] = useState(true);
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [resumedBanner, setResumedBanner] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [timedGateOpen, setTimedGateOpen] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const initRef = useRef(false);
+  const autoSubmittedRef = useRef(false);
+
+  const isTimedFinal = !!(exam as any).is_timed_final;
+  const timeLimitMin = (exam as any).time_limit_minutes as number | null | undefined;
 
   const { data: access } = useQuery({
     queryKey: ["category-access"],
@@ -85,6 +92,7 @@ function QuizPage() {
           data: { examId: exam.id, total: questions.length },
         });
         setAttemptId(state.attemptId);
+        setStartedAt(state.startedAt);
         if (state.answers.length > 0) {
           const hydrated: Record<string, string> = {};
           for (const a of state.answers) hydrated[a.question_id] = a.answer_id;
@@ -97,12 +105,29 @@ function QuizPage() {
               `Resumed — ${state.answers.length} of ${questions.length} answered`
             );
           }
+        } else if (isTimedFinal && timeLimitMin) {
+          // Fresh timed-final attempt — show the pre-start gate.
+          setTimedGateOpen(true);
         }
       } catch (e) {
         console.error("Failed to start/resume attempt", e);
       }
     })();
-  }, [user, hasAccess, exam.id, questions]);
+  }, [user, hasAccess, exam.id, questions, isTimedFinal, timeLimitMin]);
+
+  // Countdown ticker for timed final exams.
+  useEffect(() => {
+    if (!isTimedFinal || !startedAt || !timeLimitMin || submitted || timedGateOpen) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [isTimedFinal, startedAt, timeLimitMin, submitted, timedGateOpen]);
+
+  const deadlineMs =
+    isTimedFinal && startedAt && timeLimitMin
+      ? new Date(startedAt).getTime() + timeLimitMin * 60_000
+      : null;
+  const msLeft = deadlineMs ? Math.max(0, deadlineMs - now) : null;
+  const timeExpired = msLeft !== null && msLeft <= 0;
 
   const selectAnswer = async (answerId: string) => {
     if (submitted) return;
@@ -175,6 +200,24 @@ function QuizPage() {
       setSaving(false);
       setSubmitted(true);
     }
+  };
+
+  // Auto-submit when the timer runs out.
+  useEffect(() => {
+    if (!timeExpired || submitted || autoSubmittedRef.current || !attemptId) return;
+    autoSubmittedRef.current = true;
+    toast.warning("Time's up — submitting your exam.");
+    handleSubmit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeExpired, submitted, attemptId]);
+
+  const formatTime = (ms: number) => {
+    const total = Math.floor(ms / 1000);
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
   };
 
   // Paywall — user is signed in but doesn't own this track and this isn't the free sample.
@@ -321,9 +364,50 @@ function QuizPage() {
     );
   }
 
+  // Pre-start gate for timed final exams.
+  if (isTimedFinal && timedGateOpen && !submitted) {
+    const minutes = timeLimitMin ?? 0;
+    const hours = Math.floor(minutes / 60);
+    const remaining = minutes % 60;
+    const durationLabel =
+      hours > 0
+        ? `${hours} hour${hours === 1 ? "" : "s"}${remaining ? ` ${remaining} min` : ""}`
+        : `${minutes} minutes`;
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-12">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Timer className="h-7 w-7" />
+            </div>
+            <h1 className="text-2xl font-bold">{exam.title}</h1>
+            <div className="mx-auto mt-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
+              Timed Final Exam
+            </div>
+            <p className="mx-auto mt-4 max-w-md text-muted-foreground">
+              You have <span className="font-semibold text-foreground">{durationLabel}</span> to
+              complete {effectiveTotal} questions. The clock starts as soon as you begin
+              and can't be paused. Pass with 70% or higher to prove you're ready.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Button size="lg" onClick={() => setTimedGateOpen(false)}>
+                Start Timed Exam
+              </Button>
+              <Link to="/exams">
+                <Button size="lg" variant="outline">Back to Exams</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const timerCritical = msLeft !== null && msLeft < 5 * 60_000;
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-2">
         <span className="text-sm text-muted-foreground">
           Question {currentIndex + 1} of {effectiveTotal}
           {isSample && !purchased && (
@@ -331,10 +415,31 @@ function QuizPage() {
               · Free Sample
             </span>
           )}
+          {isTimedFinal && (
+            <span className="ml-2 text-xs uppercase tracking-wide text-primary">
+              · Timed Final
+            </span>
+          )}
         </span>
-        <span className="text-sm font-medium">{exam.title}</span>
+        <div className="flex items-center gap-3">
+          {isTimedFinal && msLeft !== null && (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold tabular-nums ${
+                timerCritical
+                  ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                  : "bg-primary/10 text-primary"
+              }`}
+              title="Time remaining"
+            >
+              {timerCritical ? <AlertCircle className="h-4 w-4" /> : <Timer className="h-4 w-4" />}
+              {formatTime(msLeft)}
+            </span>
+          )}
+          <span className="text-sm font-medium">{exam.title}</span>
+        </div>
       </div>
       <Progress value={progress} className="mb-4" />
+
 
       {resumedBanner && (
         <div className="mb-6 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-sm">

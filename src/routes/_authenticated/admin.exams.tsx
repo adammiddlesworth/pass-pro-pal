@@ -140,6 +140,9 @@ function ExamsList() {
                       {exam.status}
                     </Badge>
                     {exam.is_sample && <Badge variant="outline">Sample</Badge>}
+                    {exam.is_timed_final && (
+                      <Badge className="bg-primary text-primary-foreground">Timed Final</Badge>
+                    )}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     /{exam.slug} · {exam.category} ·{" "}
@@ -206,11 +209,18 @@ type FormState = {
   status: "draft" | "published" | "archived";
   description: string;
   is_sample: boolean;
+  is_timed_final: boolean;
+  time_limit_minutes: string;
   exam_number: string;
   youtube_url: string;
   youtube_video_id: string;
   topicSlugs: string[];
   tagsInput: string;
+};
+
+const TIMED_FINAL_DEFAULTS: Record<string, number> = {
+  real_estate: 150,
+  life_health_insurance: 180,
 };
 
 const emptyForm: FormState = {
@@ -220,6 +230,8 @@ const emptyForm: FormState = {
   status: "draft",
   description: "",
   is_sample: false,
+  is_timed_final: false,
+  time_limit_minutes: "",
   exam_number: "",
   youtube_url: "",
   youtube_video_id: "",
@@ -252,6 +264,9 @@ function ExamEditor({ id }: { id: string | undefined }) {
         status: existing.status,
         description: existing.description ?? "",
         is_sample: !!existing.is_sample,
+        is_timed_final: !!existing.is_timed_final,
+        time_limit_minutes:
+          existing.time_limit_minutes != null ? String(existing.time_limit_minutes) : "",
         exam_number: existing.exam_number != null ? String(existing.exam_number) : "",
         youtube_url: existing.youtube_url ?? "",
         youtube_video_id: existing.youtube_video_id ?? "",
@@ -283,6 +298,12 @@ function ExamEditor({ id }: { id: string | undefined }) {
           status: form.status || "draft",
           description: form.description || null,
           is_sample: form.is_sample,
+          is_timed_final: form.is_timed_final,
+          time_limit_minutes: form.is_timed_final
+            ? (form.time_limit_minutes
+                ? Number(form.time_limit_minutes)
+                : (TIMED_FINAL_DEFAULTS[form.category] ?? 150))
+            : null,
           exam_number: form.exam_number ? Number(form.exam_number) : null,
           youtube_url: form.youtube_url || null,
           youtube_video_id: derivedVideoId || null,
@@ -479,6 +500,42 @@ function ExamEditor({ id }: { id: string | undefined }) {
                 <Label htmlFor="is_sample" className="cursor-pointer">
                   Free sample exam
                 </Label>
+              </div>
+
+              <div className="md:col-span-2 rounded-md border border-dashed p-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="is_timed_final"
+                    checked={form.is_timed_final}
+                    onCheckedChange={(v) => setForm({ ...form, is_timed_final: !!v })}
+                  />
+                  <Label htmlFor="is_timed_final" className="cursor-pointer">
+                    Timed Final Exam
+                  </Label>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Mark this as the timed final for its track. Users must pass a timed
+                  final (≥70%) before their Readiness score can reach "Ready".
+                </p>
+                {form.is_timed_final && (
+                  <div className="mt-3 max-w-xs">
+                    <Label htmlFor="time_limit_minutes">Time limit (minutes)</Label>
+                    <Input
+                      id="time_limit_minutes"
+                      type="number"
+                      min={1}
+                      max={600}
+                      value={form.time_limit_minutes}
+                      onChange={(e) =>
+                        setForm({ ...form, time_limit_minutes: e.target.value })
+                      }
+                      placeholder={String(TIMED_FINAL_DEFAULTS[form.category] ?? 150)}
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Defaults: Real Estate 150 min · Life & Health 180 min.
+                    </p>
+                  </div>
+                )}
               </div>
             </div>
 

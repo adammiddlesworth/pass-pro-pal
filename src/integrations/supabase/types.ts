@@ -83,11 +83,13 @@ export type Database = {
           exam_number: number | null
           id: string
           is_sample: boolean
+          is_timed_final: boolean
           price_cents: number | null
           product_id: string | null
           question_count: number
           slug: string
           status: Database["public"]["Enums"]["exam_status"]
+          time_limit_minutes: number | null
           title: string
           updated_at: string
           youtube_url: string | null
@@ -100,11 +102,13 @@ export type Database = {
           exam_number?: number | null
           id?: string
           is_sample?: boolean
+          is_timed_final?: boolean
           price_cents?: number | null
           product_id?: string | null
           question_count?: number
           slug: string
           status?: Database["public"]["Enums"]["exam_status"]
+          time_limit_minutes?: number | null
           title: string
           updated_at?: string
           youtube_url?: string | null
@@ -117,11 +121,13 @@ export type Database = {
           exam_number?: number | null
           id?: string
           is_sample?: boolean
+          is_timed_final?: boolean
           price_cents?: number | null
           product_id?: string | null
           question_count?: number
           slug?: string
           status?: Database["public"]["Enums"]["exam_status"]
+          time_limit_minutes?: number | null
           title?: string
           updated_at?: string
           youtube_url?: string | null

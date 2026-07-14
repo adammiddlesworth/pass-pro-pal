@@ -6,6 +6,17 @@ export type ReadinessInput = {
   totalTopics: number;
   recentExams: ReadinessExam[];
   topics: ReadinessTopic[];
+  /**
+   * Whether the user has passed the timed final exam for this track.
+   * When false, readiness is capped below the "Ready" threshold.
+   * Defaults to true so ad-hoc calls (diagnostic, previews) aren't gated.
+   */
+  passedTimedFinal?: boolean;
+  /**
+   * Whether a timed final exam exists for this track. Used only for the
+   * reason copy — when no final exists yet, we don't nag the user.
+   */
+  hasTimedFinal?: boolean;
 };
 
 export type ReadinessResult = {
@@ -21,28 +32,43 @@ export type ReadinessResult = {
   };
 };
 
-export function calculateReadiness(input: ReadinessInput): ReadinessResult {
-  const { passMark, totalTopics, recentExams, topics } = input;
+// A user must practice at least this share of topics before "Ready" is
+// possible. Below the threshold, coverage saturates below 100 and a hard
+// cap applies to the final score.
+const COVERAGE_TARGET = 0.8; // 80%
+const COVERAGE_CAP = 75; // max readiness while coverage < target
+const FINAL_GATE_CAP = 79; // max readiness while timed final not passed
 
-  // --- 1. Recent performance (40%) — linear-decay weighted average, last 8 exams
+export function calculateReadiness(input: ReadinessInput): ReadinessResult {
+  const {
+    passMark,
+    totalTopics,
+    recentExams,
+    topics,
+    passedTimedFinal = true,
+    hasTimedFinal = false,
+  } = input;
+
+  // --- 1. Recent performance (30%) — linear-decay weighted avg, last 8 exams
   const recent8 = recentExams.slice(-8);
   let recent = 0;
   if (recent8.length > 0) {
     let weightedSum = 0;
     let weightTotal = 0;
     recent8.forEach((exam, i) => {
-      const weight = i + 1; // oldest = 1, newest = highest
+      const weight = i + 1;
       weightedSum += exam.score * weight;
       weightTotal += weight;
     });
     recent = weightedSum / weightTotal;
   }
 
-  // --- 2. Coverage (20%) — % of exam topics practiced
-  const coverage =
-    totalTopics > 0 ? Math.min(100, (topics.length / totalTopics) * 100) : 0;
+  // --- 2. Coverage (35%) — scales against required 80% of topics practiced
+  const required = Math.max(1, totalTopics * COVERAGE_TARGET);
+  const coverageRatio = topics.length / required;
+  const coverage = Math.min(100, coverageRatio * 100);
 
-  // --- 3. Weak-spot penalty (25%) — averaged shortfall below pass mark
+  // --- 3. Weak-spot penalty (20%) — averaged shortfall below pass mark
   const PENALTY_MULTIPLIER = 2;
   let gapSum = 0;
   topics.forEach((t) => {
@@ -63,9 +89,22 @@ export function calculateReadiness(input: ReadinessInput): ReadinessResult {
   }
 
   // --- Final weighted blend
-  const readiness = Math.round(
-    recent * 0.4 + coverage * 0.2 + weakSpotScore * 0.25 + consistency * 0.15
+  let readiness = Math.round(
+    recent * 0.3 + coverage * 0.35 + weakSpotScore * 0.2 + consistency * 0.15
   );
+
+  // --- Caps
+  const coverageMet = totalTopics === 0 || topics.length >= required;
+  let cappedByCoverage = false;
+  let cappedByFinal = false;
+  if (!coverageMet && readiness > COVERAGE_CAP) {
+    readiness = COVERAGE_CAP;
+    cappedByCoverage = true;
+  }
+  if (!passedTimedFinal && readiness > FINAL_GATE_CAP) {
+    readiness = FINAL_GATE_CAP;
+    cappedByFinal = true;
+  }
 
   // --- Status band
   let status: ReadinessResult["status"];
@@ -81,14 +120,23 @@ export function calculateReadiness(input: ReadinessInput): ReadinessResult {
     color = "red";
   }
 
-  // --- Dynamic reason: name the weakest practiced topic
+  // --- Dynamic reason
   let weakest: ReadinessTopic | null = null;
   topics.forEach((t) => {
     if (!weakest || t.score < weakest.score) weakest = t;
   });
 
   let reason: string;
-  if (readiness >= 80) {
+  if (cappedByFinal && hasTimedFinal) {
+    reason =
+      "Pass the timed final exam to prove you're ready — it's the last step.";
+  } else if (cappedByCoverage) {
+    const remaining = Math.max(0, Math.ceil(required) - topics.length);
+    reason =
+      remaining > 0
+        ? `Practice ${remaining} more topic${remaining === 1 ? "" : "s"} to broaden your coverage.`
+        : "Broaden your topic coverage to reach Ready.";
+  } else if (readiness >= 80) {
     reason = "You're tracking above the pass line. Keep it up.";
   } else if (weakest) {
     reason = `Focus on your weak spots. Weakest area: ${(weakest as ReadinessTopic).name} (${(weakest as ReadinessTopic).score}%).`;

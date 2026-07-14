@@ -67,11 +67,19 @@ const examInputSchema = z.object({
   status: z.enum(["draft", "published", "archived"]).default("draft"),
   description: z.string().max(2000).nullable().optional(),
   is_sample: z.boolean(),
+  is_timed_final: z.boolean().optional().default(false),
+  time_limit_minutes: z.number().int().positive().max(600).nullable().optional(),
   exam_number: z.number().int().nullable().optional(),
   youtube_url: z.string().url().nullable().optional().or(z.literal("").transform(() => null)),
   youtube_video_id: z.string().max(20).nullable().optional(),
   tags: z.array(z.string().trim().min(1).max(40)).max(20).default([]),
 });
+
+// Category-specific defaults for the timed final exam time limit.
+export const TIMED_FINAL_DEFAULT_MINUTES: Record<string, number> = {
+  real_estate: 150,
+  life_health_insurance: 180,
+};
 
 export const saveExam = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -80,12 +88,18 @@ export const saveExam = createServerFn({ method: "POST" })
     await assertAdmin(context);
 
     const { id, tags, ...fields } = data;
+    const resolvedTimeLimit =
+      fields.is_timed_final
+        ? (fields.time_limit_minutes ?? TIMED_FINAL_DEFAULT_MINUTES[fields.category] ?? 150)
+        : null;
     const payload = {
       ...fields,
       description: fields.description || null,
       youtube_url: fields.youtube_url || null,
       youtube_video_id: fields.youtube_video_id || null,
       exam_number: fields.exam_number ?? null,
+      is_timed_final: !!fields.is_timed_final,
+      time_limit_minutes: resolvedTimeLimit,
     };
 
     let examId = id;
