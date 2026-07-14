@@ -88,12 +88,18 @@ export const saveExam = createServerFn({ method: "POST" })
     await assertAdmin(context);
 
     const { id, tags, ...fields } = data;
+    const resolvedTimeLimit =
+      fields.is_timed_final
+        ? (fields.time_limit_minutes ?? TIMED_FINAL_DEFAULT_MINUTES[fields.category] ?? 150)
+        : null;
     const payload = {
       ...fields,
       description: fields.description || null,
       youtube_url: fields.youtube_url || null,
       youtube_video_id: fields.youtube_video_id || null,
       exam_number: fields.exam_number ?? null,
+      is_timed_final: !!fields.is_timed_final,
+      time_limit_minutes: resolvedTimeLimit,
     };
 
     let examId = id;
