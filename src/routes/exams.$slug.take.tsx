@@ -47,7 +47,14 @@ function QuizPage() {
   const [videoOpen, setVideoOpen] = useState(true);
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [resumedBanner, setResumedBanner] = useState<string | null>(null);
+  const [startedAt, setStartedAt] = useState<string | null>(null);
+  const [timedGateOpen, setTimedGateOpen] = useState(false);
+  const [now, setNow] = useState(() => Date.now());
   const initRef = useRef(false);
+  const autoSubmittedRef = useRef(false);
+
+  const isTimedFinal = !!(exam as any).is_timed_final;
+  const timeLimitMin = (exam as any).time_limit_minutes as number | null | undefined;
 
   const { data: access } = useQuery({
     queryKey: ["category-access"],
