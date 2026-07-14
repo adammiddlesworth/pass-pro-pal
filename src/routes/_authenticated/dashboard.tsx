@@ -28,7 +28,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { cn } from "@/lib/utils";
+import { cn, formatStudyDuration } from "@/lib/utils";
 import { WeeklyChallengeCard } from "@/components/WeeklyChallengeCard";
 import { DiagnosticCard } from "@/components/DiagnosticCard";
 import { useTrackCheckout } from "@/hooks/use-track-checkout";
