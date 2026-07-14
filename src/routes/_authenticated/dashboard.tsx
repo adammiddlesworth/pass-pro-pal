@@ -263,6 +263,25 @@ function ReadinessHero({ category }: { category: string }) {
                 {data?.reason ?? "Take an exam to get your first readiness score."}
               </p>
 
+              {data?.hasTimedFinal && !data?.passedTimedFinal && data?.timedFinalSlug && (
+                <div className="mt-3">
+                  <Link
+                    to="/exams/$slug/take"
+                    params={{ slug: data.timedFinalSlug }}
+                  >
+                    <Button size="sm" className="gap-1.5">
+                      <Target className="h-4 w-4" />
+                      Take the Timed Final Exam
+                    </Button>
+                  </Link>
+                </div>
+              )}
+              {data && !data.hasTimedFinal && (
+                <p className="mt-2 text-xs italic text-muted-foreground">
+                  Timed final exam coming soon for this track.
+                </p>
+              )}
+
               <div className="mt-4 border-t border-border pt-4">
                 <div className="grid grid-cols-3 gap-4">
                   <MiniStat
