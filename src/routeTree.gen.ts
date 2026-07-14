@@ -31,8 +31,8 @@ import { Route as AuthenticatedExamsIndexRouteImport } from './routes/_authentic
 import { Route as PreviewExamSlugRouteImport } from './routes/preview.exam.$slug'
 import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
 import { Route as AuthenticatedCheckoutResumeRouteImport } from './routes/_authenticated/checkout.resume'
-import { Route as AuthenticatedAdminUsersRouteImport } from './routes/_authenticated/admin.users'
 import { Route as AuthenticatedAdminExamsRouteImport } from './routes/_authenticated/admin.exams'
+import { Route as AuthenticatedAdminUsersIndexRouteImport } from './routes/_authenticated/admin.users.index'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
 import { Route as AuthenticatedAdminUsersUserIdRouteImport } from './routes/_authenticated/admin.users.$userId'
 
@@ -147,16 +147,17 @@ const AuthenticatedCheckoutResumeRoute =
     path: '/checkout/resume',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedAdminUsersRoute = AuthenticatedAdminUsersRouteImport.update({
-  id: '/admin/users',
-  path: '/admin/users',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedAdminExamsRoute = AuthenticatedAdminExamsRouteImport.update({
   id: '/admin/exams',
   path: '/admin/exams',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedAdminUsersIndexRoute =
+  AuthenticatedAdminUsersIndexRouteImport.update({
+    id: '/admin/users/',
+    path: '/admin/users/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const ApiPublicPaymentsWebhookRoute =
   ApiPublicPaymentsWebhookRouteImport.update({
     id: '/api/public/payments/webhook',
@@ -165,9 +166,9 @@ const ApiPublicPaymentsWebhookRoute =
   } as any)
 const AuthenticatedAdminUsersUserIdRoute =
   AuthenticatedAdminUsersUserIdRouteImport.update({
-    id: '/$userId',
-    path: '/$userId',
-    getParentRoute: () => AuthenticatedAdminUsersRoute,
+    id: '/admin/users/$userId',
+    path: '/admin/users/$userId',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 
 export interface FileRoutesByFullPath {
@@ -188,7 +189,6 @@ export interface FileRoutesByFullPath {
   '/review/$category': typeof ReviewCategoryRoute
   '/diagnostic/': typeof DiagnosticIndexRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
-  '/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/checkout/resume': typeof AuthenticatedCheckoutResumeRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
@@ -196,6 +196,7 @@ export interface FileRoutesByFullPath {
   '/exams/$slug/': typeof ExamsSlugIndexRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -215,7 +216,6 @@ export interface FileRoutesByTo {
   '/review/$category': typeof ReviewCategoryRoute
   '/diagnostic': typeof DiagnosticIndexRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
-  '/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/checkout/resume': typeof AuthenticatedCheckoutResumeRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
@@ -223,6 +223,7 @@ export interface FileRoutesByTo {
   '/exams/$slug': typeof ExamsSlugIndexRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/admin/users': typeof AuthenticatedAdminUsersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -244,7 +245,6 @@ export interface FileRoutesById {
   '/review/$category': typeof ReviewCategoryRoute
   '/diagnostic/': typeof DiagnosticIndexRoute
   '/_authenticated/admin/exams': typeof AuthenticatedAdminExamsRoute
-  '/_authenticated/admin/users': typeof AuthenticatedAdminUsersRouteWithChildren
   '/_authenticated/checkout/resume': typeof AuthenticatedCheckoutResumeRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
@@ -252,6 +252,7 @@ export interface FileRoutesById {
   '/exams/$slug/': typeof ExamsSlugIndexRoute
   '/_authenticated/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
+  '/_authenticated/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -273,7 +274,6 @@ export interface FileRouteTypes {
     | '/review/$category'
     | '/diagnostic/'
     | '/admin/exams'
-    | '/admin/users'
     | '/checkout/resume'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
@@ -281,6 +281,7 @@ export interface FileRouteTypes {
     | '/exams/$slug/'
     | '/admin/users/$userId'
     | '/api/public/payments/webhook'
+    | '/admin/users/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -300,7 +301,6 @@ export interface FileRouteTypes {
     | '/review/$category'
     | '/diagnostic'
     | '/admin/exams'
-    | '/admin/users'
     | '/checkout/resume'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
@@ -308,6 +308,7 @@ export interface FileRouteTypes {
     | '/exams/$slug'
     | '/admin/users/$userId'
     | '/api/public/payments/webhook'
+    | '/admin/users'
   id:
     | '__root__'
     | '/'
@@ -328,7 +329,6 @@ export interface FileRouteTypes {
     | '/review/$category'
     | '/diagnostic/'
     | '/_authenticated/admin/exams'
-    | '/_authenticated/admin/users'
     | '/_authenticated/checkout/resume'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
@@ -336,6 +336,7 @@ export interface FileRouteTypes {
     | '/exams/$slug/'
     | '/_authenticated/admin/users/$userId'
     | '/api/public/payments/webhook'
+    | '/_authenticated/admin/users/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -514,18 +515,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCheckoutResumeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/admin/users': {
-      id: '/_authenticated/admin/users'
-      path: '/admin/users'
-      fullPath: '/admin/users'
-      preLoaderRoute: typeof AuthenticatedAdminUsersRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/admin/exams': {
       id: '/_authenticated/admin/exams'
       path: '/admin/exams'
       fullPath: '/admin/exams'
       preLoaderRoute: typeof AuthenticatedAdminExamsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/admin/users/': {
+      id: '/_authenticated/admin/users/'
+      path: '/admin/users'
+      fullPath: '/admin/users/'
+      preLoaderRoute: typeof AuthenticatedAdminUsersIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/api/public/payments/webhook': {
@@ -537,27 +538,13 @@ declare module '@tanstack/react-router' {
     }
     '/_authenticated/admin/users/$userId': {
       id: '/_authenticated/admin/users/$userId'
-      path: '/$userId'
+      path: '/admin/users/$userId'
       fullPath: '/admin/users/$userId'
       preLoaderRoute: typeof AuthenticatedAdminUsersUserIdRouteImport
-      parentRoute: typeof AuthenticatedAdminUsersRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
-
-interface AuthenticatedAdminUsersRouteChildren {
-  AuthenticatedAdminUsersUserIdRoute: typeof AuthenticatedAdminUsersUserIdRoute
-}
-
-const AuthenticatedAdminUsersRouteChildren: AuthenticatedAdminUsersRouteChildren =
-  {
-    AuthenticatedAdminUsersUserIdRoute: AuthenticatedAdminUsersUserIdRoute,
-  }
-
-const AuthenticatedAdminUsersRouteWithChildren =
-  AuthenticatedAdminUsersRoute._addFileChildren(
-    AuthenticatedAdminUsersRouteChildren,
-  )
 
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
@@ -565,9 +552,10 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedWeeklyRoute: typeof AuthenticatedWeeklyRoute
   AuthenticatedAdminExamsRoute: typeof AuthenticatedAdminExamsRoute
-  AuthenticatedAdminUsersRoute: typeof AuthenticatedAdminUsersRouteWithChildren
   AuthenticatedCheckoutResumeRoute: typeof AuthenticatedCheckoutResumeRoute
   AuthenticatedExamsIndexRoute: typeof AuthenticatedExamsIndexRoute
+  AuthenticatedAdminUsersUserIdRoute: typeof AuthenticatedAdminUsersUserIdRoute
+  AuthenticatedAdminUsersIndexRoute: typeof AuthenticatedAdminUsersIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
@@ -576,9 +564,10 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedWeeklyRoute: AuthenticatedWeeklyRoute,
   AuthenticatedAdminExamsRoute: AuthenticatedAdminExamsRoute,
-  AuthenticatedAdminUsersRoute: AuthenticatedAdminUsersRouteWithChildren,
   AuthenticatedCheckoutResumeRoute: AuthenticatedCheckoutResumeRoute,
   AuthenticatedExamsIndexRoute: AuthenticatedExamsIndexRoute,
+  AuthenticatedAdminUsersUserIdRoute: AuthenticatedAdminUsersUserIdRoute,
+  AuthenticatedAdminUsersIndexRoute: AuthenticatedAdminUsersIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =
@@ -606,13 +595,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
