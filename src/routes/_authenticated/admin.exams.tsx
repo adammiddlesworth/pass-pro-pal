@@ -261,6 +261,9 @@ function ExamEditor({ id }: { id: string | undefined }) {
         status: existing.status,
         description: existing.description ?? "",
         is_sample: !!existing.is_sample,
+        is_timed_final: !!existing.is_timed_final,
+        time_limit_minutes:
+          existing.time_limit_minutes != null ? String(existing.time_limit_minutes) : "",
         exam_number: existing.exam_number != null ? String(existing.exam_number) : "",
         youtube_url: existing.youtube_url ?? "",
         youtube_video_id: existing.youtube_video_id ?? "",
