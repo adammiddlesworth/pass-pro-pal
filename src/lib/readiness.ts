@@ -17,6 +17,12 @@ export type ReadinessInput = {
    * reason copy — when no final exists yet, we don't nag the user.
    */
   hasTimedFinal?: boolean;
+  /**
+   * Total seconds of study time (attempts + reviews) for this user/track.
+   * Reaches full credit at STUDY_TIME_TARGET_HOURS. Defaults to the target
+   * so ad-hoc callers (diagnostic previews) aren't gated.
+   */
+  studySeconds?: number;
 };
 
 export type ReadinessResult = {
@@ -29,6 +35,7 @@ export type ReadinessResult = {
     coverage: number;
     weakSpotScore: number;
     consistency: number;
+    studyTime: number;
   };
 };
 
@@ -38,6 +45,8 @@ export type ReadinessResult = {
 const COVERAGE_TARGET = 0.8; // 80%
 const COVERAGE_CAP = 75; // max readiness while coverage < target
 const FINAL_GATE_CAP = 79; // max readiness while timed final not passed
+export const STUDY_TIME_TARGET_HOURS = 30;
+const STUDY_TIME_CAP = 79; // max readiness while study time < target
 
 export function calculateReadiness(input: ReadinessInput): ReadinessResult {
   const {
@@ -47,9 +56,10 @@ export function calculateReadiness(input: ReadinessInput): ReadinessResult {
     topics,
     passedTimedFinal = true,
     hasTimedFinal = false,
+    studySeconds = STUDY_TIME_TARGET_HOURS * 3600,
   } = input;
 
-  // --- 1. Recent performance (30%) — linear-decay weighted avg, last 8 exams
+  // --- 1. Recent performance (25%) — linear-decay weighted avg, last 8 exams
   const recent8 = recentExams.slice(-8);
   let recent = 0;
   if (recent8.length > 0) {
@@ -63,7 +73,7 @@ export function calculateReadiness(input: ReadinessInput): ReadinessResult {
     recent = weightedSum / weightTotal;
   }
 
-  // --- 2. Coverage (35%) — scales against required 80% of topics practiced
+  // --- 2. Coverage (25%) — scales against required 80% of topics practiced
   const required = Math.max(1, totalTopics * COVERAGE_TARGET);
   const coverageRatio = topics.length / required;
   const coverage = Math.min(100, coverageRatio * 100);
@@ -77,7 +87,7 @@ export function calculateReadiness(input: ReadinessInput): ReadinessResult {
   const avgGap = totalTopics > 0 ? gapSum / totalTopics : 0;
   const weakSpotScore = Math.max(0, 100 - avgGap * PENALTY_MULTIPLIER);
 
-  // --- 4. Consistency (15%) — lower score volatility = higher score
+  // --- 4. Consistency (10%) — lower score volatility = higher score
   let consistency = 100;
   const scores = recent8.map((e) => e.score);
   if (scores.length > 1) {
@@ -88,15 +98,28 @@ export function calculateReadiness(input: ReadinessInput): ReadinessResult {
     consistency = Math.max(0, 100 - stdDev * 2);
   }
 
+  // --- 5. Study time (20%) — linear ramp to STUDY_TIME_TARGET_HOURS
+  const studyHours = Math.max(0, studySeconds) / 3600;
+  const studyTime = Math.min(
+    100,
+    (studyHours / STUDY_TIME_TARGET_HOURS) * 100
+  );
+
   // --- Final weighted blend
   let readiness = Math.round(
-    recent * 0.3 + coverage * 0.35 + weakSpotScore * 0.2 + consistency * 0.15
+    recent * 0.25 +
+      coverage * 0.25 +
+      weakSpotScore * 0.2 +
+      consistency * 0.1 +
+      studyTime * 0.2
   );
 
   // --- Caps
   const coverageMet = totalTopics === 0 || topics.length >= required;
+  const studyMet = studyHours >= STUDY_TIME_TARGET_HOURS;
   let cappedByCoverage = false;
   let cappedByFinal = false;
+  let cappedByStudy = false;
   if (!coverageMet && readiness > COVERAGE_CAP) {
     readiness = COVERAGE_CAP;
     cappedByCoverage = true;
@@ -104,6 +127,10 @@ export function calculateReadiness(input: ReadinessInput): ReadinessResult {
   if (!passedTimedFinal && readiness > FINAL_GATE_CAP) {
     readiness = FINAL_GATE_CAP;
     cappedByFinal = true;
+  }
+  if (!studyMet && readiness > STUDY_TIME_CAP) {
+    readiness = STUDY_TIME_CAP;
+    cappedByStudy = true;
   }
 
   // --- Status band
@@ -136,6 +163,9 @@ export function calculateReadiness(input: ReadinessInput): ReadinessResult {
       remaining > 0
         ? `Practice ${remaining} more topic${remaining === 1 ? "" : "s"} to broaden your coverage.`
         : "Broaden your topic coverage to reach Ready.";
+  } else if (cappedByStudy) {
+    const hoursDone = Math.floor(studyHours);
+    reason = `Put in more study time — you're at ${hoursDone}h of ${STUDY_TIME_TARGET_HOURS}h.`;
   } else if (readiness >= 80) {
     reason = "You're tracking above the pass line. Keep it up.";
   } else if (weakest) {
@@ -154,6 +184,7 @@ export function calculateReadiness(input: ReadinessInput): ReadinessResult {
       coverage: Math.round(coverage),
       weakSpotScore: Math.round(weakSpotScore),
       consistency: Math.round(consistency),
+      studyTime: Math.round(studyTime),
     },
   };
 }
