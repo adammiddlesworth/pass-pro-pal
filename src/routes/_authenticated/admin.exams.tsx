@@ -140,6 +140,9 @@ function ExamsList() {
                       {exam.status}
                     </Badge>
                     {exam.is_sample && <Badge variant="outline">Sample</Badge>}
+                    {exam.is_timed_final && (
+                      <Badge className="bg-primary text-primary-foreground">Timed Final</Badge>
+                    )}
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground">
                     /{exam.slug} · {exam.category} ·{" "}
