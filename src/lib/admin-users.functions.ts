@@ -173,6 +173,7 @@ export type AdminUserDetail = {
     correct: number;
     accuracy_pct: number | null;
   }>;
+  study_seconds_total: number;
 };
 
 export const getUserDetail = createServerFn({ method: "POST" })
