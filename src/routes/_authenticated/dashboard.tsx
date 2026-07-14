@@ -477,6 +477,35 @@ function StreakCard() {
   );
 }
 
+function StudyTimeCard() {
+  const { data } = useQuery({ queryKey: ["study-time"], queryFn: () => getStudyTime() });
+  const total = data?.total_seconds ?? 0;
+  const week = data?.week_seconds ?? 0;
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2 text-base">
+          <Clock className="h-5 w-5 text-primary" />
+          Time studied
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="text-4xl font-bold tabular-nums">
+          {formatStudyDuration(total)}
+        </div>
+        <div className="text-xs text-muted-foreground">All time</div>
+        <p className="mt-4 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground tabular-nums">
+            {formatStudyDuration(week)}
+          </span>{" "}
+          this week
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+
 function PersonalizedReviewCard({ category, unlocked }: { category: string; unlocked: boolean }) {
   const { data } = useQuery({
     queryKey: ["readiness", category],
