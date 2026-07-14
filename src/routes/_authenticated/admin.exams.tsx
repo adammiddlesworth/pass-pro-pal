@@ -295,6 +295,12 @@ function ExamEditor({ id }: { id: string | undefined }) {
           status: form.status || "draft",
           description: form.description || null,
           is_sample: form.is_sample,
+          is_timed_final: form.is_timed_final,
+          time_limit_minutes: form.is_timed_final
+            ? (form.time_limit_minutes
+                ? Number(form.time_limit_minutes)
+                : (TIMED_FINAL_DEFAULTS[form.category] ?? 150))
+            : null,
           exam_number: form.exam_number ? Number(form.exam_number) : null,
           youtube_url: form.youtube_url || null,
           youtube_video_id: derivedVideoId || null,
