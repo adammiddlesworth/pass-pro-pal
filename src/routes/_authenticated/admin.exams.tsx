@@ -501,6 +501,42 @@ function ExamEditor({ id }: { id: string | undefined }) {
                   Free sample exam
                 </Label>
               </div>
+
+              <div className="md:col-span-2 rounded-md border border-dashed p-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="is_timed_final"
+                    checked={form.is_timed_final}
+                    onCheckedChange={(v) => setForm({ ...form, is_timed_final: !!v })}
+                  />
+                  <Label htmlFor="is_timed_final" className="cursor-pointer">
+                    Timed Final Exam
+                  </Label>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Mark this as the timed final for its track. Users must pass a timed
+                  final (≥70%) before their Readiness score can reach "Ready".
+                </p>
+                {form.is_timed_final && (
+                  <div className="mt-3 max-w-xs">
+                    <Label htmlFor="time_limit_minutes">Time limit (minutes)</Label>
+                    <Input
+                      id="time_limit_minutes"
+                      type="number"
+                      min={1}
+                      max={600}
+                      value={form.time_limit_minutes}
+                      onChange={(e) =>
+                        setForm({ ...form, time_limit_minutes: e.target.value })
+                      }
+                      placeholder={String(TIMED_FINAL_DEFAULTS[form.category] ?? 150)}
+                    />
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Defaults: Real Estate 150 min · Life & Health 180 min.
+                    </p>
+                  </div>
+                )}
+              </div>
             </div>
 
             <div className="flex justify-end gap-2 pt-2">
