@@ -202,6 +202,24 @@ function QuizPage() {
     }
   };
 
+  // Auto-submit when the timer runs out.
+  useEffect(() => {
+    if (!timeExpired || submitted || autoSubmittedRef.current || !attemptId) return;
+    autoSubmittedRef.current = true;
+    toast.warning("Time's up — submitting your exam.");
+    handleSubmit();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [timeExpired, submitted, attemptId]);
+
+  const formatTime = (ms: number) => {
+    const total = Math.floor(ms / 1000);
+    const h = Math.floor(total / 3600);
+    const m = Math.floor((total % 3600) / 60);
+    const s = total % 60;
+    const pad = (n: number) => n.toString().padStart(2, "0");
+    return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${pad(m)}:${pad(s)}`;
+  };
+
   // Paywall — user is signed in but doesn't own this track and this isn't the free sample.
   if (paywalled && !submitted) {
     return (
