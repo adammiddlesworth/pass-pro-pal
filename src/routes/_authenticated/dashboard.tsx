@@ -19,9 +19,11 @@ import {
   getStreak,
   getRecentActivity,
   getReadiness,
+  getStudyTime,
 } from "@/lib/dashboard.functions";
 import { updateTestDate } from "@/lib/profile.functions";
 import type { DashboardReadiness } from "@/lib/dashboard.functions";
+import { formatStudyDuration } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
