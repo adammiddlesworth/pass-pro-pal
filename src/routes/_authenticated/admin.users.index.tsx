@@ -72,9 +72,21 @@ function AdminUsersPage() {
             View accounts and drill into their progress.
           </p>
         </div>
-        <Link to="/admin/exams">
-          <Button variant="outline">Manage Exams</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => ghlSync.mutate()}
+            disabled={ghlSync.isPending}
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${ghlSync.isPending ? "animate-spin" : ""}`}
+            />
+            {ghlSync.isPending ? "Syncing…" : "Run GHL sync now"}
+          </Button>
+          <Link to="/admin/exams">
+            <Button variant="outline">Manage Exams</Button>
+          </Link>
+        </div>
       </div>
 
       <div className="mb-4 flex items-center gap-2">
