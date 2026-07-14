@@ -210,7 +210,7 @@ export const getUserDetail = createServerFn({ method: "POST" })
         supabaseAdmin
           .from("user_attempts")
           .select(
-            "id, attempt_type, exam_id, category, score, total, started_at, completed_at, exams(title, category)"
+            "id, attempt_type, exam_id, category, score, total, started_at, completed_at, exams(title, category, question_count, is_timed_final, time_limit_minutes)"
           )
           .eq("user_id", data.userId)
           .order("started_at", { ascending: false })
