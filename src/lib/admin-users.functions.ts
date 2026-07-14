@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { computeAttemptSeconds } from "@/lib/utils";
 
 async function assertAdmin(context: { supabase: any; userId: string }) {
   const { data, error } = await context.supabase.rpc("has_role", {
@@ -172,6 +173,7 @@ export type AdminUserDetail = {
     correct: number;
     accuracy_pct: number | null;
   }>;
+  study_seconds_total: number;
 };
 
 export const getUserDetail = createServerFn({ method: "POST" })
@@ -208,7 +210,7 @@ export const getUserDetail = createServerFn({ method: "POST" })
         supabaseAdmin
           .from("user_attempts")
           .select(
-            "id, attempt_type, exam_id, category, score, total, started_at, completed_at, exams(title, category)"
+            "id, attempt_type, exam_id, category, score, total, started_at, completed_at, exams(title, category, question_count, is_timed_final, time_limit_minutes)"
           )
           .eq("user_id", data.userId)
           .order("started_at", { ascending: false })
@@ -268,6 +270,18 @@ export const getUserDetail = createServerFn({ method: "POST" })
       accuracy_pct: v.answered > 0 ? (v.correct / v.answered) * 100 : null,
     }));
 
+    let study_seconds_total = 0;
+    for (const a of (attemptsRes.data || []) as any[]) {
+      study_seconds_total += computeAttemptSeconds({
+        started_at: a.started_at,
+        completed_at: a.completed_at,
+        exam_id: a.exam_id,
+        question_count: a.exams?.question_count ?? null,
+        is_timed_final: a.exams?.is_timed_final ?? null,
+        time_limit_minutes: a.exams?.time_limit_minutes ?? null,
+      });
+    }
+
     return {
       id: data.userId,
       email: user?.email ?? null,
@@ -281,5 +295,6 @@ export const getUserDetail = createServerFn({ method: "POST" })
       purchases: (purchasesRes.data || []) as any,
       attempts,
       categoryRollup,
+      study_seconds_total,
     };
   });
