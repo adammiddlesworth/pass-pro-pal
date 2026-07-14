@@ -206,11 +206,18 @@ type FormState = {
   status: "draft" | "published" | "archived";
   description: string;
   is_sample: boolean;
+  is_timed_final: boolean;
+  time_limit_minutes: string;
   exam_number: string;
   youtube_url: string;
   youtube_video_id: string;
   topicSlugs: string[];
   tagsInput: string;
+};
+
+const TIMED_FINAL_DEFAULTS: Record<string, number> = {
+  real_estate: 150,
+  life_health_insurance: 180,
 };
 
 const emptyForm: FormState = {
@@ -220,6 +227,8 @@ const emptyForm: FormState = {
   status: "draft",
   description: "",
   is_sample: false,
+  is_timed_final: false,
+  time_limit_minutes: "",
   exam_number: "",
   youtube_url: "",
   youtube_video_id: "",
