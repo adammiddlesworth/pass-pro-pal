@@ -1,33 +1,37 @@
-## Update pricing and remove the bundle
+# Admin: Users & Progress
 
-### 1. Paddle catalog (test env — auto-syncs to live on publish)
-- `PATCH` `real_estate_exam_price` → `unit_price.amount = "4999"` (USD).
-- `PATCH` `life_health_exam_price` → `unit_price.amount = "4999"` (USD).
-- Archive the `exam_bundle` product and its price in Paddle so it can't be purchased.
+Add a new admin page at `/admin/users` that lists all users and lets you drill into any user to see everything they've completed.
 
-### 2. Frontend pricing page (`src/routes/pricing.tsx`)
-- Delete the `exam_bundle` plan entry.
-- Update both remaining plans' `price` string to `"$49.99"`.
-- Drop the `"Best value"` highlight styling (or promote one track — default: leave both un-highlighted, symmetric two-column grid).
-- Remove the `ownsProduct("exam_bundle")` branch.
-- Layout goes from `md:grid-cols-3` → `md:grid-cols-2` with a narrower max width so the two cards look intentional, not sparse.
+## Access control
 
-### 3. Checkout hook (`src/hooks/use-track-checkout.ts`)
-- Remove `"exam_bundle"` from the accepted `productId` override type (it stays a valid string but no UI passes it anymore).
+- Reuse the existing admin gate (`has_role(user, 'admin')`) via `checkIsAdmin` in `src/lib/admin.functions.ts`.
+- All data reads happen in new server functions using `supabaseAdmin` after verifying the caller is an admin — no schema/RLS changes needed.
 
-### 4. Checkout resume route (`src/routes/_authenticated/checkout.resume.tsx`)
-- If it whitelists product IDs, drop `exam_bundle` from the list so a stale link can't reopen the bundle checkout.
+## Server functions (new file `src/lib/admin-users.functions.ts`)
 
-### 5. Webhook (`src/routes/api/public/payments/webhook.ts`)
-- The bundle-unlocks-both-tracks branch in `handleTransactionCompleted` can be removed. Not strictly required (no new bundle purchases will happen), but keeping it is harmless for any historical bundle purchase that later gets replayed. **Leave it in place** to preserve refund-revocation for any existing bundle buyer.
+1. `listUsers({ search?, limit, offset })` — returns users from `auth.users` (via `supabaseAdmin.auth.admin.listUsers`) joined with `profiles` (display_name, active_track, test_date) and aggregate stats:
+   - total attempts, completed attempts, average score, last active date, current streak, purchases count.
+2. `getUserDetail({ userId })` — returns:
+   - Profile + email + roles
+   - Purchases (product, amount, status, date)
+   - Attempts list (exam title, type, score/total, started/completed timestamps)
+   - Per-category progress rollup (attempts + accuracy)
+   - Recent answers (last 50 with question preview + correct/incorrect)
+   - Streak info
 
-### Out of scope
-- No DB migration — historical `purchases` rows for `exam_bundle` stay valid and keep granting both tracks via the existing webhook logic.
-- No copy changes beyond the price number and the removed third card.
+## UI (new routes)
 
-### Test plan (preview)
-1. Visit `/pricing` signed-out → see two $49.99 cards, no bundle.
-2. Click **Get started** on Real Estate → sign up → checkout resumes and Paddle overlay shows **$49.99**.
-3. Pay with test card `4242 4242 4242 4242`, any future expiry, any CVC.
-4. Land on `/checkout/success` → dashboard shows real estate content unlocked.
-5. Repeat with a second account for Life & Health to confirm both prices updated in Paddle (the overlay amount is authoritative — if it still shows $19.99, the Paddle `PATCH` didn't land).
+- `src/routes/_authenticated/admin.users.tsx` — searchable/sortable table: name, email, track, attempts, avg score, last active. Row click → detail page. Redirects non-admins to `/dashboard`.
+- `src/routes/_authenticated/admin.users.$userId.tsx` — user detail with tabs/sections: Overview, Attempts, Purchases, Activity. Uses shadcn Card/Table/Tabs already in the project.
+- Add an "Users" link next to the existing "Exams" admin nav on `/admin/exams`, and an "Admin" entry point from the dashboard when the user is admin (if not already present).
+
+## Technical notes
+
+- Use `useServerFn` + TanStack Query pattern (matches `admin.exams.tsx`).
+- Pagination: server-side, 50/page.
+- No new DB migrations required — all queries go through existing tables (`profiles`, `user_attempts`, `user_answers`, `purchases`, `user_streaks`, `user_roles`, `exams`, `questions`).
+- Emails come from `supabaseAdmin.auth.admin.listUsers()` / `getUserById()`.
+
+## Out of scope
+
+- Editing user data, impersonation, exporting CSVs, or granting/revoking roles (can be added later if you want).
