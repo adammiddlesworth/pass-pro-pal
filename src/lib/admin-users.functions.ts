@@ -270,6 +270,18 @@ export const getUserDetail = createServerFn({ method: "POST" })
       accuracy_pct: v.answered > 0 ? (v.correct / v.answered) * 100 : null,
     }));
 
+    let study_seconds_total = 0;
+    for (const a of (attemptsRes.data || []) as any[]) {
+      study_seconds_total += computeAttemptSeconds({
+        started_at: a.started_at,
+        completed_at: a.completed_at,
+        exam_id: a.exam_id,
+        question_count: a.exams?.question_count ?? null,
+        is_timed_final: a.exams?.is_timed_final ?? null,
+        time_limit_minutes: a.exams?.time_limit_minutes ?? null,
+      });
+    }
+
     return {
       id: data.userId,
       email: user?.email ?? null,
@@ -283,5 +295,6 @@ export const getUserDetail = createServerFn({ method: "POST" })
       purchases: (purchasesRes.data || []) as any,
       attempts,
       categoryRollup,
+      study_seconds_total,
     };
   });
