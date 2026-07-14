@@ -5,6 +5,7 @@ import { getUserDetail } from "@/lib/admin-users.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft } from "lucide-react";
+import { formatStudyDuration } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/admin/users/$userId")({
   component: AdminUserDetailPage,
