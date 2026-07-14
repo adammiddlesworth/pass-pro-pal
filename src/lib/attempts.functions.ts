@@ -106,18 +106,30 @@ export const finalizeAttempt = createServerFn({ method: "POST" })
 
     const { data: attempt, error: aErr } = await supabase
       .from("user_attempts")
-      .select("id, user_id, completed_at")
+      .select("id, user_id, completed_at, started_at, exam_id, exams(is_timed_final, time_limit_minutes)")
       .eq("id", data.attemptId)
       .maybeSingle();
     if (aErr) throw aErr;
     if (!attempt || attempt.user_id !== userId) throw new Error("Attempt not found");
 
+    // For timed finals, cap elapsed at the time limit so a client that
+    // submits late still gets a valid deadline-based score (no bonus time).
+    const exam = (attempt as any).exams as { is_timed_final?: boolean; time_limit_minutes?: number | null } | null;
+    const isTimed = !!exam?.is_timed_final && !!exam?.time_limit_minutes;
+
     const { data: rows, error: rErr } = await supabase
       .from("user_answers")
-      .select("is_correct")
+      .select("is_correct, answered_at")
       .eq("attempt_id", data.attemptId);
     if (rErr) throw rErr;
-    const score = (rows || []).filter((r: any) => r.is_correct).length;
+
+    let gradedRows = (rows || []) as any[];
+    if (isTimed) {
+      const startedAt = new Date((attempt as any).started_at).getTime();
+      const deadline = startedAt + (exam!.time_limit_minutes as number) * 60_000;
+      gradedRows = gradedRows.filter((r) => new Date(r.answered_at).getTime() <= deadline);
+    }
+    const score = gradedRows.filter((r) => r.is_correct).length;
 
     const { error: uErr } = await supabase
       .from("user_attempts")
