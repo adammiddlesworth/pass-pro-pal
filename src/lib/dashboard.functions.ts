@@ -589,6 +589,29 @@ export const getReadiness = createServerFn({ method: "GET" })
       );
     }
 
+    // Study time for this category — all completed attempts on exams in
+    // this category, clamped per attempt.
+    const { data: studyRows } = await supabase
+      .from("user_attempts")
+      .select(
+        "started_at, completed_at, exam_id, exams!inner(category, question_count, is_timed_final, time_limit_minutes)"
+      )
+      .eq("user_id", userId)
+      .eq("exams.category", category as any)
+      .not("completed_at", "is", null);
+
+    let studySeconds = 0;
+    for (const r of (studyRows || []) as any[]) {
+      studySeconds += computeAttemptSeconds({
+        started_at: r.started_at,
+        completed_at: r.completed_at,
+        exam_id: r.exam_id,
+        question_count: r.exams?.question_count ?? null,
+        is_timed_final: r.exams?.is_timed_final ?? null,
+        time_limit_minutes: r.exams?.time_limit_minutes ?? null,
+      });
+    }
+
     const base = calculateReadiness({
       passMark: PASS_MARK,
       totalTopics,
@@ -596,6 +619,7 @@ export const getReadiness = createServerFn({ method: "GET" })
       topics: practicedTopics.map((t) => ({ name: t.name, score: t.score })),
       passedTimedFinal: hasTimedFinal ? passedTimedFinal : true,
       hasTimedFinal,
+      studySeconds,
     });
 
     // Fetch exam date from profile.

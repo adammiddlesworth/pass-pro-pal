@@ -1,22 +1,47 @@
-## Problem
+## Goal
 
-Clicking a user row updates the URL to `/admin/users/<id>` but the page keeps showing the users list — the detail page never appears.
+Fold total study time into the readiness score so a user isn't marked "Ready" until they've put in real hours. Target: **30 hours of studying = full credit** on this dimension.
 
-**Root cause**: `src/routes/_authenticated/admin.users.tsx` is now a parent route (because `admin.users.$userId.tsx` exists as its child). A parent route must render `<Outlet />` for children to appear, but `admin.users.tsx` renders the full users list component instead. Result: child route matches but has nowhere to render.
+## Approach
 
-## Fix
+Add a fifth component to `calculateReadiness` in `src/lib/readiness.ts`: **Study time (hours)**, alongside the existing Recent (30%), Coverage (35%), Weak spots (20%), Consistency (15%).
 
-Rename `src/routes/_authenticated/admin.users.tsx` → `src/routes/_authenticated/admin.users.index.tsx` and update its `createFileRoute` string to `/_authenticated/admin/users/`.
+### New weighting
 
-This turns the users list into a proper `/admin/users` leaf, and TanStack Router's implicit parent handles children like `/admin/users/$userId` correctly. No component changes needed beyond the route-string update.
+- Recent performance: 25%
+- Coverage: 25%
+- Weak spots: 20%
+- Consistency: 10%
+- **Study time: 20%** (new)
 
-## Files
+Study score = `min(100, studyHours / 30 * 100)` — linear ramp, saturates at 30h.
 
-- `src/routes/_authenticated/admin.users.tsx` → move to `src/routes/_authenticated/admin.users.index.tsx`
-- Update `createFileRoute("/_authenticated/admin/users")` → `createFileRoute("/_authenticated/admin/users/")`
+### New hard cap
 
-`routeTree.gen.ts` regenerates automatically.
+Mirror the coverage/final-exam gate pattern: if `studyHours < 30`, cap readiness at **79** (below the "Ready" threshold of 80). Reason copy: "Put in more study time — you're at Xh of 30h."
+
+Cap precedence (first match wins for the reason):
+1. Timed final not passed (existing)
+2. Coverage not met (existing)
+3. **Study time under 30h (new)**
+
+### Wiring
+
+`calculateReadiness` gains a `studySeconds` input. Every caller passes it:
+
+- `src/lib/dashboard.functions.ts` — already computes `study_seconds_total` for the dashboard card; pass it into the readiness call.
+- Any other caller (diagnostic previews, admin) — pass `studySeconds: 0` if unknown so behavior is unchanged for ad-hoc calls, OR compute it. I'll audit callers during implementation and pass real seconds wherever the value is already at hand; default to `0` only for true preview/diagnostic contexts (matching the existing `passedTimedFinal` default pattern).
+
+### Files
+
+- `src/lib/readiness.ts` — add `studySeconds` input, study-time component, cap, weighting change, reason copy, breakdown field.
+- `src/lib/dashboard.functions.ts` — pass `studySeconds` into `calculateReadiness`.
+- Audit and update any other `calculateReadiness` call sites found during implementation.
+
+No UI changes required — the readiness number and reason string update automatically wherever they render.
 
 ## Verification
 
-Navigate to `/admin/users`, click a user row, confirm the detail page (Time studied, Category progress, Attempts, Purchases) renders.
+1. User with 0h study, otherwise strong scores → readiness capped at 79, reason mentions study time.
+2. User with 30h+ study and strong scores → can reach ≥80 ("Ready").
+3. Existing coverage/final-exam caps still fire when they should.
