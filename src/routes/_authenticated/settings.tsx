@@ -34,6 +34,8 @@ import {
   updateProfile,
   updateTestDate,
 } from "@/lib/profile.functions";
+import { getStudyTime } from "@/lib/dashboard.functions";
+import { formatStudyDuration } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/settings")({
   head: () => ({
