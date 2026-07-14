@@ -108,12 +108,17 @@ function ExamsList() {
             Create and edit practice exams, YouTube links, and topic tags.
           </p>
         </div>
-        <Link to="/admin/exams" search={{ new: true, edit: undefined }}>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            New Exam
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          <Link to="/admin/users">
+            <Button variant="outline">Users</Button>
+          </Link>
+          <Link to="/admin/exams" search={{ new: true, edit: undefined }}>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              New Exam
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {isLoading ? (
