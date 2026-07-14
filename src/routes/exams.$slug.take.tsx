@@ -92,6 +92,7 @@ function QuizPage() {
           data: { examId: exam.id, total: questions.length },
         });
         setAttemptId(state.attemptId);
+        setStartedAt(state.startedAt);
         if (state.answers.length > 0) {
           const hydrated: Record<string, string> = {};
           for (const a of state.answers) hydrated[a.question_id] = a.answer_id;
@@ -104,12 +105,29 @@ function QuizPage() {
               `Resumed — ${state.answers.length} of ${questions.length} answered`
             );
           }
+        } else if (isTimedFinal && timeLimitMin) {
+          // Fresh timed-final attempt — show the pre-start gate.
+          setTimedGateOpen(true);
         }
       } catch (e) {
         console.error("Failed to start/resume attempt", e);
       }
     })();
-  }, [user, hasAccess, exam.id, questions]);
+  }, [user, hasAccess, exam.id, questions, isTimedFinal, timeLimitMin]);
+
+  // Countdown ticker for timed final exams.
+  useEffect(() => {
+    if (!isTimedFinal || !startedAt || !timeLimitMin || submitted || timedGateOpen) return;
+    const t = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, [isTimedFinal, startedAt, timeLimitMin, submitted, timedGateOpen]);
+
+  const deadlineMs =
+    isTimedFinal && startedAt && timeLimitMin
+      ? new Date(startedAt).getTime() + timeLimitMin * 60_000
+      : null;
+  const msLeft = deadlineMs ? Math.max(0, deadlineMs - now) : null;
+  const timeExpired = msLeft !== null && msLeft <= 0;
 
   const selectAnswer = async (answerId: string) => {
     if (submitted) return;
