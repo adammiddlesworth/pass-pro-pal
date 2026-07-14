@@ -364,9 +364,50 @@ function QuizPage() {
     );
   }
 
+  // Pre-start gate for timed final exams.
+  if (isTimedFinal && timedGateOpen && !submitted) {
+    const minutes = timeLimitMin ?? 0;
+    const hours = Math.floor(minutes / 60);
+    const remaining = minutes % 60;
+    const durationLabel =
+      hours > 0
+        ? `${hours} hour${hours === 1 ? "" : "s"}${remaining ? ` ${remaining} min` : ""}`
+        : `${minutes} minutes`;
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-12">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Timer className="h-7 w-7" />
+            </div>
+            <h1 className="text-2xl font-bold">{exam.title}</h1>
+            <div className="mx-auto mt-3 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-primary">
+              Timed Final Exam
+            </div>
+            <p className="mx-auto mt-4 max-w-md text-muted-foreground">
+              You have <span className="font-semibold text-foreground">{durationLabel}</span> to
+              complete {effectiveTotal} questions. The clock starts as soon as you begin
+              and can't be paused. Pass with 70% or higher to prove you're ready.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Button size="lg" onClick={() => setTimedGateOpen(false)}>
+                Start Timed Exam
+              </Button>
+              <Link to="/exams">
+                <Button size="lg" variant="outline">Back to Exams</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const timerCritical = msLeft !== null && msLeft < 5 * 60_000;
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-12">
-      <div className="mb-6 flex items-center justify-between">
+      <div className="mb-6 flex items-center justify-between gap-2">
         <span className="text-sm text-muted-foreground">
           Question {currentIndex + 1} of {effectiveTotal}
           {isSample && !purchased && (
@@ -374,10 +415,31 @@ function QuizPage() {
               · Free Sample
             </span>
           )}
+          {isTimedFinal && (
+            <span className="ml-2 text-xs uppercase tracking-wide text-primary">
+              · Timed Final
+            </span>
+          )}
         </span>
-        <span className="text-sm font-medium">{exam.title}</span>
+        <div className="flex items-center gap-3">
+          {isTimedFinal && msLeft !== null && (
+            <span
+              className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold tabular-nums ${
+                timerCritical
+                  ? "bg-red-500/10 text-red-600 dark:text-red-400"
+                  : "bg-primary/10 text-primary"
+              }`}
+              title="Time remaining"
+            >
+              {timerCritical ? <AlertCircle className="h-4 w-4" /> : <Timer className="h-4 w-4" />}
+              {formatTime(msLeft)}
+            </span>
+          )}
+          <span className="text-sm font-medium">{exam.title}</span>
+        </div>
       </div>
       <Progress value={progress} className="mb-4" />
+
 
       {resumedBanner && (
         <div className="mb-6 flex items-center justify-between gap-3 rounded-md border border-primary/30 bg-primary/5 px-4 py-2 text-sm">
