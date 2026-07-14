@@ -34,6 +34,7 @@ import { Route as AuthenticatedCheckoutResumeRouteImport } from './routes/_authe
 import { Route as AuthenticatedAdminExamsRouteImport } from './routes/_authenticated/admin.exams'
 import { Route as AuthenticatedAdminUsersIndexRouteImport } from './routes/_authenticated/admin.users.index'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
+import { Route as ApiPublicHooksGhlNightlySyncRouteImport } from './routes/api/public/hooks/ghl-nightly-sync'
 import { Route as AuthenticatedAdminUsersUserIdRouteImport } from './routes/_authenticated/admin.users.$userId'
 
 const TermsRoute = TermsRouteImport.update({
@@ -164,6 +165,12 @@ const ApiPublicPaymentsWebhookRoute =
     path: '/api/public/payments/webhook',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksGhlNightlySyncRoute =
+  ApiPublicHooksGhlNightlySyncRouteImport.update({
+    id: '/api/public/hooks/ghl-nightly-sync',
+    path: '/api/public/hooks/ghl-nightly-sync',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AuthenticatedAdminUsersUserIdRoute =
   AuthenticatedAdminUsersUserIdRouteImport.update({
     id: '/admin/users/$userId',
@@ -195,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/exams/': typeof AuthenticatedExamsIndexRoute
   '/exams/$slug/': typeof ExamsSlugIndexRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
+  '/api/public/hooks/ghl-nightly-sync': typeof ApiPublicHooksGhlNightlySyncRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
 }
@@ -222,6 +230,7 @@ export interface FileRoutesByTo {
   '/exams': typeof AuthenticatedExamsIndexRoute
   '/exams/$slug': typeof ExamsSlugIndexRoute
   '/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
+  '/api/public/hooks/ghl-nightly-sync': typeof ApiPublicHooksGhlNightlySyncRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/admin/users': typeof AuthenticatedAdminUsersIndexRoute
 }
@@ -251,6 +260,7 @@ export interface FileRoutesById {
   '/_authenticated/exams/': typeof AuthenticatedExamsIndexRoute
   '/exams/$slug/': typeof ExamsSlugIndexRoute
   '/_authenticated/admin/users/$userId': typeof AuthenticatedAdminUsersUserIdRoute
+  '/api/public/hooks/ghl-nightly-sync': typeof ApiPublicHooksGhlNightlySyncRoute
   '/api/public/payments/webhook': typeof ApiPublicPaymentsWebhookRoute
   '/_authenticated/admin/users/': typeof AuthenticatedAdminUsersIndexRoute
 }
@@ -280,6 +290,7 @@ export interface FileRouteTypes {
     | '/exams/'
     | '/exams/$slug/'
     | '/admin/users/$userId'
+    | '/api/public/hooks/ghl-nightly-sync'
     | '/api/public/payments/webhook'
     | '/admin/users/'
   fileRoutesByTo: FileRoutesByTo
@@ -307,6 +318,7 @@ export interface FileRouteTypes {
     | '/exams'
     | '/exams/$slug'
     | '/admin/users/$userId'
+    | '/api/public/hooks/ghl-nightly-sync'
     | '/api/public/payments/webhook'
     | '/admin/users'
   id:
@@ -335,6 +347,7 @@ export interface FileRouteTypes {
     | '/_authenticated/exams/'
     | '/exams/$slug/'
     | '/_authenticated/admin/users/$userId'
+    | '/api/public/hooks/ghl-nightly-sync'
     | '/api/public/payments/webhook'
     | '/_authenticated/admin/users/'
   fileRoutesById: FileRoutesById
@@ -356,6 +369,7 @@ export interface RootRouteChildren {
   ExamsSlugTakeRoute: typeof ExamsSlugTakeRoute
   PreviewExamSlugRoute: typeof PreviewExamSlugRoute
   ExamsSlugIndexRoute: typeof ExamsSlugIndexRoute
+  ApiPublicHooksGhlNightlySyncRoute: typeof ApiPublicHooksGhlNightlySyncRoute
   ApiPublicPaymentsWebhookRoute: typeof ApiPublicPaymentsWebhookRoute
 }
 
@@ -536,6 +550,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicPaymentsWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/ghl-nightly-sync': {
+      id: '/api/public/hooks/ghl-nightly-sync'
+      path: '/api/public/hooks/ghl-nightly-sync'
+      fullPath: '/api/public/hooks/ghl-nightly-sync'
+      preLoaderRoute: typeof ApiPublicHooksGhlNightlySyncRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/_authenticated/admin/users/$userId': {
       id: '/_authenticated/admin/users/$userId'
       path: '/admin/users/$userId'
@@ -590,6 +611,7 @@ const rootRouteChildren: RootRouteChildren = {
   ExamsSlugTakeRoute: ExamsSlugTakeRoute,
   PreviewExamSlugRoute: PreviewExamSlugRoute,
   ExamsSlugIndexRoute: ExamsSlugIndexRoute,
+  ApiPublicHooksGhlNightlySyncRoute: ApiPublicHooksGhlNightlySyncRoute,
   ApiPublicPaymentsWebhookRoute: ApiPublicPaymentsWebhookRoute,
 }
 export const routeTree = rootRouteImport
