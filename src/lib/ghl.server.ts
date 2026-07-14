@@ -40,7 +40,9 @@ export type GhlUpsertInput = {
   source?: string;
 };
 
-export type GhlResult = { ok: true; contactId: string } | { ok: false; error: string };
+export type GhlUpsertResult =
+  | { ok: true; contactId: string }
+  | { ok: false; error: string };
 
 async function safeFetch(url: string, init: RequestInit): Promise<Response | null> {
   try {
@@ -53,9 +55,8 @@ async function safeFetch(url: string, init: RequestInit): Promise<Response | nul
 
 /**
  * Upsert a contact by email in the configured location. Idempotent.
- * See: https://highlevel.stoplight.io/docs/integrations/9f5f3f6f6f6f6-upsert-contact
  */
-export async function upsertContact(input: GhlUpsertInput): Promise<GhlResult> {
+export async function upsertContact(input: GhlUpsertInput): Promise<GhlUpsertResult> {
   const c = creds();
   if (!c) {
     console.warn("[ghl] GHL_PIT / GHL_LOCATION_ID not set — skipping sync");
@@ -103,7 +104,31 @@ export async function upsertContact(input: GhlUpsertInput): Promise<GhlResult> {
   return { ok: true, contactId };
 }
 
-/** Add extra tags to an existing contact (upsert already accepts tags too). */
+/** Fetch a contact to read current tags/custom fields. */
+export async function getContact(contactId: string): Promise<{ tags: string[] } | null> {
+  const c = creds();
+  if (!c) return null;
+  const res = await safeFetch(`${GHL_BASE}/contacts/${contactId}`, {
+    method: "GET",
+    headers: headers(c.token),
+  });
+  if (!res || !res.ok) {
+    if (res) {
+      const text = await res.text().catch(() => "");
+      console.error(`[ghl] getContact ${res.status}: ${text}`);
+    }
+    return null;
+  }
+  const json = (await res.json().catch(() => ({}))) as any;
+  const tags: string[] = Array.isArray(json?.contact?.tags)
+    ? json.contact.tags
+    : Array.isArray(json?.tags)
+    ? json.tags
+    : [];
+  return { tags };
+}
+
+/** Add tags to an existing contact. */
 export async function addContactTags(contactId: string, tags: string[]): Promise<boolean> {
   const c = creds();
   if (!c || tags.length === 0) return false;
@@ -113,14 +138,53 @@ export async function addContactTags(contactId: string, tags: string[]): Promise
     body: JSON.stringify({ tags }),
   });
   if (!res || !res.ok) {
-    console.error("[ghl] addContactTags failed", res?.status, await res?.text().catch(() => ""));
+    const text = await res?.text().catch(() => "");
+    console.error("[ghl] addContactTags failed", res?.status, text);
     return false;
   }
   return true;
 }
 
+/** Remove tags from an existing contact. */
+export async function removeContactTags(contactId: string, tags: string[]): Promise<boolean> {
+  const c = creds();
+  if (!c || tags.length === 0) return false;
+  const res = await safeFetch(`${GHL_BASE}/contacts/${contactId}/tags`, {
+    method: "DELETE",
+    headers: headers(c.token),
+    body: JSON.stringify({ tags }),
+  });
+  if (!res || !res.ok) {
+    const text = await res?.text().catch(() => "");
+    console.error("[ghl] removeContactTags failed", res?.status, text);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Reconcile the `passpal-*` tags on a contact so it exactly matches
+ * `desiredPasspalTags`. Non-passpal tags are left untouched. Requires that
+ * the upsert has already added the desired tags (idempotent add) — this call
+ * only computes and removes stale ones.
+ */
+export async function reconcilePasspalTags(
+  contactId: string,
+  desiredPasspalTags: string[],
+): Promise<void> {
+  const current = await getContact(contactId);
+  if (!current) return;
+  const desired = new Set(desiredPasspalTags);
+  const stale = current.tags.filter(
+    (t) => t.startsWith("passpal-") && !desired.has(t),
+  );
+  if (stale.length > 0) {
+    await removeContactTags(contactId, stale);
+  }
+}
+
 /** Fire-and-forget wrapper: never throws, never blocks the caller on errors. */
-export function syncToGhl(input: GhlUpsertInput): Promise<GhlResult> {
+export function syncToGhl(input: GhlUpsertInput): Promise<GhlUpsertResult> {
   return upsertContact(input).catch((e) => {
     console.error("[ghl] syncToGhl threw", e);
     return { ok: false, error: "threw" };

@@ -256,6 +256,18 @@ function Navbar() {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
+  useEffect(() => {
+    // Fire-and-forget: on every SIGNED_IN, ensure the user exists as a
+    // contact in GoHighLevel. Deduped server-side via profiles.ghl_synced_at.
+    const { data: sub } = supabase.auth.onAuthStateChange((event) => {
+      if (event !== "SIGNED_IN") return;
+      import("@/lib/ghl-sync.functions")
+        .then(({ syncCurrentUserToGhl }) => syncCurrentUserToGhl())
+        .catch((e) => console.error("[ghl] on-signin sync error", e));
+    });
+    return () => sub.subscription.unsubscribe();
+  }, []);
+
   return (
     <QueryClientProvider client={queryClient}>
       <div className="flex min-h-screen flex-col bg-background">

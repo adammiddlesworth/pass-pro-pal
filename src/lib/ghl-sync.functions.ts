@@ -7,8 +7,10 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 /**
- * Called from the client after a successful signUp. Best-effort — swallows
- * errors so a CRM outage never breaks signup.
+ * Called from the email/password signup path after Supabase returns a
+ * session. Best-effort — swallows errors so a CRM outage never breaks
+ * signup. Also marks profiles.ghl_synced_at so the on-login sync doesn't
+ * re-fire.
  */
 export const syncSignupToGhl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -16,21 +18,78 @@ export const syncSignupToGhl = createServerFn({ method: "POST" })
     try {
       const { syncToGhl } = await import("./ghl.server");
       const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-      const { data: userRes } = await supabaseAdmin.auth.admin.getUserById(context.userId);
+      const { data: userRes } = await supabaseAdmin.auth.admin.getUserById(
+        context.userId,
+      );
       const email = userRes?.user?.email;
       if (!email) return { ok: false, reason: "no_email" };
       const meta = (userRes.user?.user_metadata ?? {}) as Record<string, unknown>;
-      const name = (meta.display_name as string) || (meta.full_name as string) || undefined;
-      await syncToGhl({
+      const name =
+        (meta.display_name as string) ||
+        (meta.full_name as string) ||
+        undefined;
+      const result = await syncToGhl({
         email,
         name,
         tags: ["passpal-signup"],
         customFields: { passpal_last_activity_at: new Date().toISOString() },
         source: "PassPal signup",
       });
+      if (result.ok) {
+        await supabaseAdmin
+          .from("profiles")
+          .update({ ghl_synced_at: new Date().toISOString() } as any)
+          .eq("id", context.userId);
+      }
       return { ok: true };
     } catch (e) {
       console.error("[ghl] syncSignupToGhl error", e);
       return { ok: false, reason: "threw" };
     }
+  });
+
+/**
+ * Called from the client on every SIGNED_IN event. Deduped server-side via
+ * profiles.ghl_synced_at — first successful sync stamps that column, and
+ * subsequent logins short-circuit. Ongoing stat updates are handled by the
+ * nightly cron.
+ */
+export const syncCurrentUserToGhl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    try {
+      const { supabaseAdmin } = await import(
+        "@/integrations/supabase/client.server"
+      );
+      const { data: profile } = await supabaseAdmin
+        .from("profiles")
+        .select("ghl_synced_at")
+        .eq("id", context.userId)
+        .maybeSingle();
+      if ((profile as any)?.ghl_synced_at) {
+        return { ok: true, skipped: true };
+      }
+      const { syncUserToGhl } = await import("./ghl-cron.server");
+      const ok = await syncUserToGhl(context.userId);
+      return { ok, skipped: false };
+    } catch (e) {
+      console.error("[ghl] syncCurrentUserToGhl error", e);
+      return { ok: false, reason: "threw" };
+    }
+  });
+
+/**
+ * Admin-only trigger for the full nightly sync. Runs on the server so the
+ * admin can smoke-test without waiting for cron.
+ */
+export const runGhlSyncNow = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Forbidden: admin role required");
+    const { runNightlyGhlSync } = await import("./ghl-cron.server");
+    return runNightlyGhlSync();
   });

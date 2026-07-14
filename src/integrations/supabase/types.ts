@@ -140,6 +140,7 @@ export type Database = {
           active_track: string | null
           created_at: string
           display_name: string | null
+          ghl_synced_at: string | null
           id: string
           test_date: string | null
           updated_at: string
@@ -148,6 +149,7 @@ export type Database = {
           active_track?: string | null
           created_at?: string
           display_name?: string | null
+          ghl_synced_at?: string | null
           id: string
           test_date?: string | null
           updated_at?: string
@@ -156,6 +158,7 @@ export type Database = {
           active_track?: string | null
           created_at?: string
           display_name?: string | null
+          ghl_synced_at?: string | null
           id?: string
           test_date?: string | null
           updated_at?: string

@@ -1,12 +1,14 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { checkIsAdmin } from "@/lib/admin.functions";
 import { listUsers } from "@/lib/admin-users.functions";
+import { runGhlSyncNow } from "@/lib/ghl-sync.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RefreshCw } from "lucide-react";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/admin/users/")({
   component: AdminUsersPage,
@@ -25,6 +27,15 @@ function AdminUsersPage() {
     queryKey: ["admin-users", page, search],
     queryFn: () => listUsers({ data: { page, perPage: 50, search } }),
     enabled: !!adminCheck?.isAdmin,
+  });
+
+  const ghlSync = useMutation({
+    mutationFn: () => runGhlSyncNow(),
+    onSuccess: (s: any) =>
+      toast.success(
+        `GHL sync: ${s.succeeded}/${s.processed} succeeded (${s.failed} failed) in ${Math.round(s.durationMs / 1000)}s`,
+      ),
+    onError: (e: any) => toast.error(e?.message ?? "GHL sync failed"),
   });
 
   if (checkingAdmin) {
@@ -61,9 +72,21 @@ function AdminUsersPage() {
             View accounts and drill into their progress.
           </p>
         </div>
-        <Link to="/admin/exams">
-          <Button variant="outline">Manage Exams</Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={() => ghlSync.mutate()}
+            disabled={ghlSync.isPending}
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${ghlSync.isPending ? "animate-spin" : ""}`}
+            />
+            {ghlSync.isPending ? "Syncing…" : "Run GHL sync now"}
+          </Button>
+          <Link to="/admin/exams">
+            <Button variant="outline">Manage Exams</Button>
+          </Link>
+        </div>
       </div>
 
       <div className="mb-4 flex items-center gap-2">
