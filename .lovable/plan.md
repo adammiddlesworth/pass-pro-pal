@@ -1,37 +1,77 @@
-# Admin: Users & Progress
+## Goal
 
-Add a new admin page at `/admin/users` that lists all users and lets you drill into any user to see everything they've completed.
+Tighten the Readiness score so users must (a) practice broadly and (b) pass a real timed final exam before Readiness reads "Ready".
 
-## Access control
+## 1. New "Timed Final Exam" exam category
 
-- Reuse the existing admin gate (`has_role(user, 'admin')`) via `checkIsAdmin` in `src/lib/admin.functions.ts`.
-- All data reads happen in new server functions using `supabaseAdmin` after verifying the caller is an admin — no schema/RLS changes needed.
+- Add `exam_category` enum value handling by adding a new column instead of touching the enum: `exams.is_timed_final boolean not null default false` plus `exams.time_limit_minutes int` (nullable).
+- The user asked for a new category — implemented as an exam-level flag so an exam still belongs to its licensing category (real_estate / life_health_insurance) but is separately flagged as the timed final. This keeps existing category filters, purchases, and topic rollups intact.
+- Defaults: when `is_timed_final = true` and `time_limit_minutes` is null:
+  - real_estate → 150 min (2.5 h)
+  - life_health_insurance → 180 min (3 h)
+- Pass mark stays 70% (matches existing `PASS_MARK`).
 
-## Server functions (new file `src/lib/admin-users.functions.ts`)
+## 2. Admin UI (`admin.exams.tsx`)
 
-1. `listUsers({ search?, limit, offset })` — returns users from `auth.users` (via `supabaseAdmin.auth.admin.listUsers`) joined with `profiles` (display_name, active_track, test_date) and aggregate stats:
-   - total attempts, completed attempts, average score, last active date, current streak, purchases count.
-2. `getUserDetail({ userId })` — returns:
-   - Profile + email + roles
-   - Purchases (product, amount, status, date)
-   - Attempts list (exam title, type, score/total, started/completed timestamps)
-   - Per-category progress rollup (attempts + accuracy)
-   - Recent answers (last 50 with question preview + correct/incorrect)
-   - Streak info
+- Add a "Timed Final Exam" checkbox next to the existing "Sample" checkbox in the exam editor.
+- When checked, show a "Time limit (minutes)" input pre-filled with the category default.
+- Show a "Timed Final" badge in the exam list.
+- `saveExam` server fn accepts + persists `is_timed_final` and `time_limit_minutes`.
 
-## UI (new routes)
+## 3. Timed take flow (`exams.$slug.take.tsx`)
 
-- `src/routes/_authenticated/admin.users.tsx` — searchable/sortable table: name, email, track, attempts, avg score, last active. Row click → detail page. Redirects non-admins to `/dashboard`.
-- `src/routes/_authenticated/admin.users.$userId.tsx` — user detail with tabs/sections: Overview, Attempts, Purchases, Activity. Uses shadcn Card/Table/Tabs already in the project.
-- Add an "Users" link next to the existing "Exams" admin nav on `/admin/exams`, and an "Admin" entry point from the dashboard when the user is admin (if not already present).
+- If the loaded exam has `is_timed_final`:
+  - Show a "Start Timed Exam" gate before questions render (one confirmation click starts the clock).
+  - Persist `started_at` on the attempt (already exists) and compute `deadline = started_at + time_limit_minutes`.
+  - Render a countdown in the header; when it hits 0, auto-submit via `finalizeAttempt`.
+  - Disable "Start over" mid-attempt so the clock can't be reset by reloading — resume uses the original `started_at`.
+- Non-final exams: unchanged.
 
-## Technical notes
+## 4. Readiness scoring changes (`src/lib/readiness.ts` + `dashboard.functions.ts`)
 
-- Use `useServerFn` + TanStack Query pattern (matches `admin.exams.tsx`).
-- Pagination: server-side, 50/page.
-- No new DB migrations required — all queries go through existing tables (`profiles`, `user_attempts`, `user_answers`, `purchases`, `user_streaks`, `user_roles`, `exams`, `questions`).
-- Emails come from `supabaseAdmin.auth.admin.listUsers()` / `getUserById()`.
+Tighten coverage and add a hard final-exam gate.
+
+### Weights (was → now)
+- Recent performance:  40% → 30%
+- Coverage:            20% → 35%
+- Weak-spot penalty:   25% → 20%
+- Consistency:         15% → 15%
+
+### Coverage rule
+- Coverage now scales against a required 80% of topics practiced (≥5 answers each):
+  `coverage = min(100, practiced / (0.8 * totalTopics) * 100)`
+- Below 80% coverage, cap final Readiness at **75** regardless of other inputs.
+
+### Timed final gate
+- Extend `ReadinessInput` with `passedTimedFinal: boolean`.
+- If `passedTimedFinal === false`, cap Readiness at **79** and force status to "Almost there".
+- Reason text updates:
+  - No practiced final: "Take the timed final exam to prove you're ready."
+  - Attempted but failed: "You haven't passed the timed final yet — retake it to reach Ready."
+
+### `getReadiness` server fn
+- Query `user_attempts` joined on `exams` for the category where `exams.is_timed_final = true`, `completed_at is not null`, `score/total*100 >= 70` → sets `passedTimedFinal`.
+- Return new fields: `passedTimedFinal`, `hasTimedFinal` (does a timed final exam exist for this category yet), so the dashboard can show a "Take the timed final" CTA.
+
+## 5. Dashboard surface (`_authenticated/dashboard.tsx`)
+
+- In the Readiness card, when `hasTimedFinal && !passedTimedFinal`, show a prominent "Take the Timed Final Exam" button linking to that exam's take page.
+- When `!hasTimedFinal`, show a small muted note: "Timed final exam coming soon for this track" (so scoring stays consistent even before admin adds one).
+
+## 6. Migration
+
+Single migration:
+- `alter table public.exams add column is_timed_final boolean not null default false;`
+- `alter table public.exams add column time_limit_minutes int;`
+- No RLS/policy changes needed (existing exam policies already cover new columns).
 
 ## Out of scope
 
-- Editing user data, impersonation, exporting CSVs, or granting/revoking roles (can be added later if you want).
+- Regenerating existing exams as "final". Admins mark one per track manually.
+- Per-question timing, pausing, or proctoring.
+- Retake cooldowns.
+
+## Technical notes
+
+- Types regenerate after the migration; UI + server-fn edits land after.
+- Countdown uses a `setInterval` in the take component, plus a server-side deadline check inside `finalizeAttempt` so a client with a hacked clock still can't submit past the deadline (server recomputes elapsed from `started_at`).
