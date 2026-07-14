@@ -624,6 +624,47 @@ export const getReadiness = createServerFn({ method: "GET" })
     };
   });
 
+export type StudyTime = {
+  total_seconds: number;
+  week_seconds: number;
+};
 
+export const getStudyTime = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<StudyTime> => {
+    const { supabase, userId } = context;
 
+    const { data: rows } = await supabase
+      .from("user_attempts")
+      .select(
+        "started_at, completed_at, exam_id, exams(question_count, is_timed_final, time_limit_minutes)"
+      )
+      .eq("user_id", userId)
+      .not("completed_at", "is", null);
+
+    // Week window: Sunday-anchored, matches getStreak
+    const today = new Date();
+    const weekStart = new Date(today);
+    weekStart.setDate(today.getDate() - today.getDay());
+    weekStart.setHours(0, 0, 0, 0);
+    const weekStartMs = weekStart.getTime();
+
+    let total = 0;
+    let week = 0;
+    for (const r of (rows || []) as any[]) {
+      const secs = computeAttemptSeconds({
+        started_at: r.started_at,
+        completed_at: r.completed_at,
+        exam_id: r.exam_id,
+        question_count: r.exams?.question_count ?? null,
+        is_timed_final: r.exams?.is_timed_final ?? null,
+        time_limit_minutes: r.exams?.time_limit_minutes ?? null,
+      });
+      total += secs;
+      if (r.completed_at && new Date(r.completed_at).getTime() >= weekStartMs) {
+        week += secs;
+      }
+    }
+    return { total_seconds: total, week_seconds: week };
+  });
 
