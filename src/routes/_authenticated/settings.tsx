@@ -55,6 +55,10 @@ function SettingsPage() {
     queryKey: ["profile"],
     queryFn: () => getProfile(),
   });
+  const { data: studyTime } = useQuery({
+    queryKey: ["study-time"],
+    queryFn: () => getStudyTime(),
+  });
 
   const [displayName, setDisplayName] = useState("");
   const [track, setTrack] = useState<
