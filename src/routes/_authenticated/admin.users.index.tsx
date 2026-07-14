@@ -29,6 +29,15 @@ function AdminUsersPage() {
     enabled: !!adminCheck?.isAdmin,
   });
 
+  const ghlSync = useMutation({
+    mutationFn: () => runGhlSyncNow(),
+    onSuccess: (s: any) =>
+      toast.success(
+        `GHL sync: ${s.succeeded}/${s.processed} succeeded (${s.failed} failed) in ${Math.round(s.durationMs / 1000)}s`,
+      ),
+    onError: (e: any) => toast.error(e?.message ?? "GHL sync failed"),
+  });
+
   if (checkingAdmin) {
     return (
       <div className="mx-auto max-w-6xl px-4 py-12 text-sm text-muted-foreground">
