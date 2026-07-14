@@ -259,6 +259,30 @@ function SettingsPage() {
 
       <Card>
         <CardHeader>
+          <CardTitle>Study time</CardTitle>
+          <CardDescription>Time spent on exams and reviews.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-6">
+            <div>
+              <div className="text-2xl font-bold tabular-nums">
+                {formatStudyDuration(studyTime?.total_seconds ?? 0)}
+              </div>
+              <div className="text-xs text-muted-foreground">All time</div>
+            </div>
+            <div>
+              <div className="text-2xl font-bold tabular-nums">
+                {formatStudyDuration(studyTime?.week_seconds ?? 0)}
+              </div>
+              <div className="text-xs text-muted-foreground">This week</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+
+      <Card>
+        <CardHeader>
           <CardTitle>Account</CardTitle>
           <CardDescription>Change password or sign out.</CardDescription>
         </CardHeader>
