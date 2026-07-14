@@ -499,6 +499,10 @@ export type DashboardReadiness = ReadinessResult & {
   topicsTotal: number;
   weakestTopics: { slug: string; name: string; score: number }[];
   testDate: string | null;
+  hasTimedFinal: boolean;
+  passedTimedFinal: boolean;
+  timedFinalSlug: string | null;
+  timedFinalTitle: string | null;
 };
 
 export const getReadiness = createServerFn({ method: "GET" })
@@ -558,11 +562,39 @@ export const getReadiness = createServerFn({ method: "GET" })
       })
       .filter(Boolean) as { slug: string; name: string; score: number }[];
 
+    // Look up whether a timed final exam exists for this track, and whether
+    // this user has passed one.
+    const { data: finalExams } = await supabase
+      .from("exams")
+      .select("id, slug, title")
+      .eq("category", category as any)
+      .eq("status", "published")
+      .eq("is_timed_final", true as any);
+    const hasTimedFinal = !!(finalExams && finalExams.length > 0);
+    const timedFinalSlug = hasTimedFinal ? (finalExams as any[])[0].slug : null;
+    const timedFinalTitle = hasTimedFinal ? (finalExams as any[])[0].title : null;
+
+    let passedTimedFinal = false;
+    if (hasTimedFinal) {
+      const finalIds = (finalExams as any[]).map((e) => e.id);
+      const { data: finalAttempts } = await supabase
+        .from("user_attempts")
+        .select("score, total")
+        .eq("user_id", userId)
+        .in("exam_id", finalIds)
+        .not("completed_at", "is", null);
+      passedTimedFinal = ((finalAttempts || []) as any[]).some(
+        (a) => a.total > 0 && (a.score / a.total) * 100 >= PASS_MARK
+      );
+    }
+
     const base = calculateReadiness({
       passMark: PASS_MARK,
       totalTopics,
       recentExams,
       topics: practicedTopics.map((t) => ({ name: t.name, score: t.score })),
+      passedTimedFinal: hasTimedFinal ? passedTimedFinal : true,
+      hasTimedFinal,
     });
 
     // Fetch exam date from profile.
@@ -584,6 +616,10 @@ export const getReadiness = createServerFn({ method: "GET" })
       topicsTotal: topicDefs.length,
       weakestTopics,
       testDate: (profile as any)?.test_date ?? null,
+      hasTimedFinal,
+      passedTimedFinal,
+      timedFinalSlug,
+      timedFinalTitle,
     };
   });
 
