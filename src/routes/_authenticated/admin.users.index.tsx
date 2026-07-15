@@ -123,13 +123,25 @@ function AdminUsersPage() {
         <div className="flex items-center gap-2">
           <Button
             variant="outline"
+            onClick={() => syncAllVisible(rows.map((u) => u.id))}
+            disabled={bulkProgress !== null || rows.length === 0}
+          >
+            <RefreshCw
+              className={`mr-2 h-4 w-4 ${bulkProgress ? "animate-spin" : ""}`}
+            />
+            {bulkProgress
+              ? `Syncing ${bulkProgress.done}/${bulkProgress.total}…`
+              : "Sync visible to GHL"}
+          </Button>
+          <Button
+            variant="outline"
             onClick={() => ghlSync.mutate()}
             disabled={ghlSync.isPending}
           >
             <RefreshCw
               className={`mr-2 h-4 w-4 ${ghlSync.isPending ? "animate-spin" : ""}`}
             />
-            {ghlSync.isPending ? "Syncing…" : "Run GHL sync now"}
+            {ghlSync.isPending ? "Syncing…" : "Run full GHL sync"}
           </Button>
           <Link to="/admin/ghl-sync">
             <Button variant="outline">GHL sync history</Button>
