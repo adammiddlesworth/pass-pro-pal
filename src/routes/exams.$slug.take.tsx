@@ -332,9 +332,9 @@ function QuizPage() {
                       const isSelected = selected === a.id;
                       const isCorrectAnswer = a.is_correct;
                       let borderClass = "border-muted";
-                      if (isCorrectAnswer) borderClass = "border-green-500 bg-green-50";
+                      if (isCorrectAnswer) borderClass = "border-green-500 bg-green-50 text-green-900 dark:bg-green-500/15 dark:text-green-300";
                       else if (isSelected && !isCorrectAnswer)
-                        borderClass = "border-red-500 bg-red-50";
+                        borderClass = "border-red-500 bg-red-50 text-red-900 dark:bg-red-500/15 dark:text-red-300";
 
                       return (
                         <div
@@ -495,8 +495,8 @@ function QuizPage() {
               const correctId = currentQuestion.answers.find((x: any) => x.is_correct)?.id;
               let stateClass = "border-muted hover:border-green-500 hover:bg-green-500 hover:text-white";
               if (answered) {
-                if (a.is_correct) stateClass = "border-green-500 bg-green-50 text-green-900";
-                else if (isSelected) stateClass = "border-red-500 bg-red-50 text-red-900";
+                if (a.is_correct) stateClass = "border-green-500 bg-green-50 text-green-900 dark:bg-green-500/15 dark:text-green-300";
+                else if (isSelected) stateClass = "border-red-500 bg-red-50 text-red-900 dark:bg-red-500/15 dark:text-red-300";
                 else stateClass = "border-muted opacity-70";
               }
               return (
