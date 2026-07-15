@@ -236,16 +236,32 @@ export async function syncUserToGhlDetailed(
 
     if (!upsertResult.ok) {
       console.error(`[ghl-cron] upsert failed for ${email}: ${upsertResult.error}`);
+      await supabaseAdmin
+        .from("profiles")
+        .update({
+          ghl_sync_status: "failed",
+          ghl_last_error: upsertResult.error,
+          ghl_last_synced_at: new Date().toISOString(),
+        } as any)
+        .eq("id", userId);
       return { ok: false, email, error: upsertResult.error };
     }
 
+    const nowIso = new Date().toISOString();
+    const profileUpdate: Record<string, unknown> = {
+      ghl_sync_status: "synced",
+      ghl_contact_id: upsertResult.contactId,
+      ghl_last_error: null,
+      ghl_last_synced_at: nowIso,
+    };
     // Mark first-time synced so the on-signup path doesn't re-send.
     if (!(profile as any)?.ghl_synced_at) {
-      await supabaseAdmin
-        .from("profiles")
-        .update({ ghl_synced_at: new Date().toISOString() } as any)
-        .eq("id", userId);
+      profileUpdate.ghl_synced_at = nowIso;
     }
+    await supabaseAdmin
+      .from("profiles")
+      .update(profileUpdate as any)
+      .eq("id", userId);
 
     // Remove any stale passpal-* tags that no longer apply.
     await reconcilePasspalTags(upsertResult.contactId, desiredPasspalTags);
