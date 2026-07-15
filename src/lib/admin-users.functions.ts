@@ -117,6 +117,10 @@ export const listUsers = createServerFn({ method: "POST" })
         avg_score_pct: avg,
         last_active_at: lastActive ?? null,
         purchases_count: purchasesByUser.get(u.id) || 0,
+        ghl_sync_status: prof?.ghl_sync_status ?? null,
+        ghl_contact_id: prof?.ghl_contact_id ?? null,
+        ghl_last_error: prof?.ghl_last_error ?? null,
+        ghl_last_synced_at: prof?.ghl_last_synced_at ?? null,
       };
     });
 
