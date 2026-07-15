@@ -108,8 +108,8 @@ function PreviewQuiz() {
                     {q.answers.map((a, i) => {
                       const isSelected = selected === a.id;
                       let borderClass = "border-muted";
-                      if (a.is_correct) borderClass = "border-green-500 bg-green-50";
-                      else if (isSelected) borderClass = "border-red-500 bg-red-50";
+                      if (a.is_correct) borderClass = "border-green-500 bg-green-50 text-green-900 dark:bg-green-500/15 dark:text-green-300";
+                      else if (isSelected) borderClass = "border-red-500 bg-red-50 text-red-900 dark:bg-red-500/15 dark:text-red-300";
                       return (
                         <div key={a.id} className={`rounded-md border px-4 py-2 text-sm ${borderClass}`}>
                           <span className="mr-2 font-semibold">{String.fromCharCode(65 + i)}.</span>
@@ -155,8 +155,8 @@ function PreviewQuiz() {
               const correctId = currentQuestion.answers.find((x) => x.is_correct)?.id;
               let stateClass = "border-muted hover:bg-primary hover:text-white hover:border-primary";
               if (answered) {
-                if (a.is_correct) stateClass = "border-green-500 bg-green-50 text-green-900";
-                else if (isSelected) stateClass = "border-red-500 bg-red-50 text-red-900";
+                if (a.is_correct) stateClass = "border-green-500 bg-green-50 text-green-900 dark:bg-green-500/15 dark:text-green-300";
+                else if (isSelected) stateClass = "border-red-500 bg-red-50 text-red-900 dark:bg-red-500/15 dark:text-red-300";
                 else stateClass = "border-muted opacity-70";
               }
               return (

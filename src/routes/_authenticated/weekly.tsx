@@ -270,8 +270,8 @@ function WeeklyQuiz({ questions, weekNumber }: { questions: any[]; weekNumber: n
                     {q.answers.map((a: any) => {
                       const isSelected = selected === a.id;
                       let borderClass = "border-muted";
-                      if (a.is_correct) borderClass = "border-green-500 bg-green-50";
-                      else if (isSelected) borderClass = "border-red-500 bg-red-50";
+                      if (a.is_correct) borderClass = "border-green-500 bg-green-50 text-green-900 dark:bg-green-500/15 dark:text-green-300";
+                      else if (isSelected) borderClass = "border-red-500 bg-red-50 text-red-900 dark:bg-red-500/15 dark:text-red-300";
                       return (
                         <div
                           key={a.id}
@@ -323,8 +323,8 @@ function WeeklyQuiz({ questions, weekNumber }: { questions: any[]; weekNumber: n
               let stateClass =
                 "border-muted hover:border-primary hover:bg-primary/5";
               if (answered) {
-                if (a.is_correct) stateClass = "border-green-500 bg-green-50 text-green-900";
-                else if (isSelected) stateClass = "border-red-500 bg-red-50 text-red-900";
+                if (a.is_correct) stateClass = "border-green-500 bg-green-50 text-green-900 dark:bg-green-500/15 dark:text-green-300";
+                else if (isSelected) stateClass = "border-red-500 bg-red-50 text-red-900 dark:bg-red-500/15 dark:text-red-300";
                 else stateClass = "border-muted opacity-70";
               }
               return (
