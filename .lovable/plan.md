@@ -1,23 +1,28 @@
-## Plan: proceed as-is
+## Diagnosis
 
-The GoHighLevel integration is already implemented and the nightly cron is scheduled. No code changes are needed — this plan just confirms the rollout.
+The sync ran cleanly on our side — the code, cron, and admin trigger all work. Every call to GHL is being rejected with:
 
-### What's already live
-- `profiles.ghl_synced_at` column tracks first-time signup sync (deduped).
-- `syncCurrentUserToGhl` fires on every `SIGNED_IN` event from `src/routes/__root.tsx` (covers Google OAuth + email/password).
-- `syncSignupToGhl` still runs on email/password signup for immediate push.
-- Nightly cron `ghl-nightly-sync` at `0 7 * * *` UTC hits `/api/public/hooks/ghl-nightly-sync`, which runs `runNightlyGhlSync()` over all users active in the last 90 days.
-- Per-user payload: custom fields (`passpal_last_login_at`, `passpal_last_activity_at`, `passpal_current_streak`, `passpal_best_streak`, `passpal_study_hours`, `passpal_accuracy_pct`, `passpal_readiness_score`, `passpal_track`, `passpal_test_date`, `passpal_days_to_test`) plus reconciled `passpal-*` tags for activity recency, streak milestones, readiness band, and test-date windows.
-- Admin → Users has a **Run GHL sync now** button for on-demand testing.
+```
+401 "The token is not authorized for this scope."
+```
 
-### One-time setup you need to do in GoHighLevel
-1. **Settings → Custom Fields → Contact** — create the 10 `passpal_*` fields listed above using those exact field keys (types: dates for `*_at` / `test_date`, numbers for streaks / hours / accuracy / readiness / days_to_test, text for `track`).
-2. Tags require no setup — they're created automatically on first sync.
+This is a GHL-side permissions issue on your **Private Integration Token (PIT)**. The token was created without the scopes needed to read/write contacts and tags.
 
-### Verification after you create the fields
-1. Sign in with a fresh Google account → contact appears in GHL within seconds with the `passpal-signup` tag.
-2. Click **Run GHL sync now** in `/admin/users` → confirm custom fields and tags populate on a known user.
-3. After the first 07:00 UTC run, check the server logs for the `{ processed, succeeded, failed, skipped }` summary.
+## Fix (all in GoHighLevel — no code change needed)
 
-### Nothing to change in code
-If the fields exist in GHL and the button test passes, we're done — the cron takes over nightly.
+1. In GHL, go to **Settings → Private Integrations** (in the sub-account whose ID is stored as `GHL_LOCATION_ID`).
+2. Either edit the existing PIT or create a new one, and enable at minimum these scopes:
+   - `contacts.readonly`
+   - `contacts.write`
+   - (recommended, for tag reconcile) `contacts/tags.write` if listed separately in your GHL edition
+3. Copy the new token value.
+4. Back in Lovable, update the `GHL_PIT` secret with the new token (I'll open the secure form for you).
+5. Click **Run GHL sync now** on `/admin/users` and confirm the summary shows `succeeded: 8, failed: 0`.
+
+## Also verify (common gotcha)
+
+Confirm `GHL_LOCATION_ID` is the **sub-account (Location) ID** — not the Agency ID. A PIT is scoped to one Location; if the ID belongs to a different Location than the token, GHL also returns 401 on this endpoint.
+
+## What I won't change
+
+No code edits — the integration works. Only the token/scopes in GHL need adjustment.
