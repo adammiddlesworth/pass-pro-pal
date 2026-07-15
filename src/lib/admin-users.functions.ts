@@ -24,6 +24,10 @@ export type AdminUserRow = {
   avg_score_pct: number | null;
   last_active_at: string | null;
   purchases_count: number;
+  ghl_sync_status: string | null;
+  ghl_contact_id: string | null;
+  ghl_last_error: string | null;
+  ghl_last_synced_at: string | null;
 };
 
 export type AdminUsersPage = {
