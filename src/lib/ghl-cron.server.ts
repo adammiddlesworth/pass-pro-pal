@@ -14,6 +14,8 @@ const ACTIVE_WINDOW_DAYS = 90;
 const PSEUDO_TOPICS = new Set(["mixed", "final-exam-practice"]);
 const PASS_MARK = 70;
 
+export type GhlSyncError = { user_id: string; email: string | null; error: string };
+
 type SyncSummary = {
   processed: number;
   succeeded: number;
@@ -21,6 +23,12 @@ type SyncSummary = {
   skipped: number;
   durationMs: number;
 };
+
+export type SyncUserResult =
+  | { ok: true; email: string | null }
+  | { ok: false; email: string | null; error: string };
+
+const MAX_ERRORS_STORED = 100;
 
 function daysBetween(a: Date, b: Date) {
   return Math.floor((a.getTime() - b.getTime()) / 86_400_000);
@@ -68,23 +76,36 @@ function testDateTags(testDate: string | null): {
  * logged and swallowed. Returns whether it succeeded so the caller can tally.
  */
 export async function syncUserToGhl(userId: string): Promise<boolean> {
+  const r = await syncUserToGhlDetailed(userId);
+  return r.ok;
+}
+
+/**
+ * Detailed variant that returns the GHL error string on failure so the
+ * caller (nightly runner) can persist per-contact failures.
+ */
+export async function syncUserToGhlDetailed(
+  userId: string,
+): Promise<SyncUserResult> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const {
     upsertContact,
     reconcilePasspalTags,
   } = await import("@/lib/ghl.server");
 
+  let email: string | null = null;
   try {
     // Auth user (email + last sign-in from auth.users).
     const { data: userRes, error: userErr } =
       await supabaseAdmin.auth.admin.getUserById(userId);
     if (userErr || !userRes?.user) {
+      const msg = userErr?.message ?? "getUserById returned no user";
       console.error("[ghl-cron] getUserById failed", userId, userErr);
-      return false;
+      return { ok: false, email: null, error: msg };
     }
     const authUser = userRes.user;
-    const email = authUser.email;
-    if (!email) return false;
+    email = authUser.email ?? null;
+    if (!email) return { ok: false, email: null, error: "no_email" };
 
     const meta = (authUser.user_metadata ?? {}) as Record<string, unknown>;
     const displayNameFromMeta =
@@ -172,7 +193,7 @@ export async function syncUserToGhl(userId: string): Promise<boolean> {
       lastActivity &&
       daysBetween(new Date(), lastActivity) > ACTIVE_WINDOW_DAYS
     ) {
-      return false;
+      return { ok: false, email, error: "skipped_inactive" };
     }
 
     // ---------- Build payload ----------
@@ -215,7 +236,7 @@ export async function syncUserToGhl(userId: string): Promise<boolean> {
 
     if (!upsertResult.ok) {
       console.error(`[ghl-cron] upsert failed for ${email}: ${upsertResult.error}`);
-      return false;
+      return { ok: false, email, error: upsertResult.error };
     }
 
     // Mark first-time synced so the on-signup path doesn't re-send.
@@ -228,10 +249,10 @@ export async function syncUserToGhl(userId: string): Promise<boolean> {
 
     // Remove any stale passpal-* tags that no longer apply.
     await reconcilePasspalTags(upsertResult.contactId, desiredPasspalTags);
-    return true;
+    return { ok: true, email };
   } catch (e) {
     console.error("[ghl-cron] syncUserToGhl error", userId, e);
-    return false;
+    return { ok: false, email, error: e instanceof Error ? e.message : String(e) };
   }
 }
 
@@ -356,7 +377,10 @@ async function computeReadinessForCategory(
  * Run the nightly sync across all users who signed in or completed an
  * attempt within ACTIVE_WINDOW_DAYS. Batched to stay under GHL rate limits.
  */
-export async function runNightlyGhlSync(): Promise<SyncSummary> {
+export async function runNightlyGhlSync(
+  trigger: "cron" | "manual" = "cron",
+): Promise<SyncSummary> {
+  const startedAt = new Date();
   const started = Date.now();
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
@@ -367,6 +391,7 @@ export async function runNightlyGhlSync(): Promise<SyncSummary> {
     skipped: 0,
     durationMs: 0,
   };
+  const errors: GhlSyncError[] = [];
 
   const cutoff = new Date(
     Date.now() - ACTIVE_WINDOW_DAYS * 86_400_000,
@@ -411,16 +436,44 @@ export async function runNightlyGhlSync(): Promise<SyncSummary> {
   const DELAY_MS = 250;
   for (let i = 0; i < ids.length; i += BATCH) {
     const chunk = ids.slice(i, i + BATCH);
-    const results = await Promise.all(chunk.map((id) => syncUserToGhl(id)));
-    for (const ok of results) {
+    const results = await Promise.all(
+      chunk.map(async (id) => ({ id, r: await syncUserToGhlDetailed(id) })),
+    );
+    for (const { id, r } of results) {
       summary.processed += 1;
-      if (ok) summary.succeeded += 1;
-      else summary.failed += 1;
+      if (r.ok) {
+        summary.succeeded += 1;
+      } else if (r.error === "skipped_inactive") {
+        summary.skipped += 1;
+      } else {
+        summary.failed += 1;
+        errors.push({ user_id: id, email: r.email, error: r.error });
+      }
     }
     if (i + BATCH < ids.length) await new Promise((r) => setTimeout(r, DELAY_MS));
   }
 
   summary.durationMs = Date.now() - started;
   console.log(`[ghl-cron] nightly sync complete`, summary);
+
+  // Persist the run row (best-effort — never let a logging failure escape).
+  try {
+    const truncated = errors.length > MAX_ERRORS_STORED;
+    await supabaseAdmin.from("ghl_sync_runs" as any).insert({
+      trigger,
+      started_at: startedAt.toISOString(),
+      finished_at: new Date().toISOString(),
+      processed: summary.processed,
+      succeeded: summary.succeeded,
+      failed: summary.failed,
+      skipped: summary.skipped,
+      duration_ms: summary.durationMs,
+      errors: truncated ? errors.slice(0, MAX_ERRORS_STORED) : errors,
+      truncated,
+    } as any);
+  } catch (e) {
+    console.error("[ghl-cron] failed to persist sync run", e);
+  }
+
   return summary;
 }

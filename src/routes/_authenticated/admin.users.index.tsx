@@ -83,6 +83,9 @@ function AdminUsersPage() {
             />
             {ghlSync.isPending ? "Syncing…" : "Run GHL sync now"}
           </Button>
+          <Link to="/admin/ghl-sync">
+            <Button variant="outline">GHL sync history</Button>
+          </Link>
           <Link to="/admin/exams">
             <Button variant="outline">Manage Exams</Button>
           </Link>

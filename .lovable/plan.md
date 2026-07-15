@@ -1,28 +1,45 @@
-## Diagnosis
+## Goal
 
-The sync ran cleanly on our side — the code, cron, and admin trigger all work. Every call to GHL is being rejected with:
+Give admins a `/admin/ghl-sync` page that shows recent GHL sync runs (nightly cron + on-demand) with per-contact success/failure and the exact error string returned by GHL (e.g. the 401 scope message).
 
-```
-401 "The token is not authorized for this scope."
-```
+## Data model — new table
 
-This is a GHL-side permissions issue on your **Private Integration Token (PIT)**. The token was created without the scopes needed to read/write contacts and tags.
+`public.ghl_sync_runs`
+- `trigger` text — `'cron'` | `'manual'` | `'signin'`
+- `started_at`, `finished_at` timestamptz
+- `processed`, `succeeded`, `failed`, `skipped` int
+- `errors` jsonb — array of `{ user_id, email, error }`; capped to first 100 to keep rows small
+- RLS: admins-only SELECT via `has_role(auth.uid(),'admin')`; no client INSERT (writes come from `supabaseAdmin`).
 
-## Fix (all in GoHighLevel — no code change needed)
+## Instrumentation
 
-1. In GHL, go to **Settings → Private Integrations** (in the sub-account whose ID is stored as `GHL_LOCATION_ID`).
-2. Either edit the existing PIT or create a new one, and enable at minimum these scopes:
-   - `contacts.readonly`
-   - `contacts.write`
-   - (recommended, for tag reconcile) `contacts/tags.write` if listed separately in your GHL edition
-3. Copy the new token value.
-4. Back in Lovable, update the `GHL_PIT` secret with the new token (I'll open the secure form for you).
-5. Click **Run GHL sync now** on `/admin/users` and confirm the summary shows `succeeded: 8, failed: 0`.
+Update `src/lib/ghl-cron.server.ts`:
+- `syncUserToGhl` returns `{ ok, error?, email? }` instead of `boolean`, surfacing the exact `upsertResult.error` string.
+- `runNightlyGhlSync(trigger)` collects failures and writes one row into `ghl_sync_runs` at the end (best-effort; a logging failure never blocks the sync).
 
-## Also verify (common gotcha)
+Update callers so the run source is recorded:
+- `api/public/hooks/ghl-nightly-sync` → `'cron'`
+- `runGhlSyncNow` (admin button) → `'manual'`
+- `syncCurrentUserToGhl` stays as-is (single-user, not a "run").
 
-Confirm `GHL_LOCATION_ID` is the **sub-account (Location) ID** — not the Agency ID. A PIT is scoped to one Location; if the ID belongs to a different Location than the token, GHL also returns 401 on this endpoint.
+## Admin UI
 
-## What I won't change
+New route `src/routes/_authenticated/admin.ghl-sync.tsx`:
+- Guards on `has_role('admin')` like other admin pages.
+- Server fn `listGhlSyncRuns` (admin-only) returns the last 20 runs.
+- UI shows a table: trigger, started_at, duration, counts (processed/succeeded/failed/skipped). Row-click expands to show the per-contact error list (email + error text) when `errors` is non-empty.
+- "Run now" button reuses existing `runGhlSyncNow`, then refetches the list.
 
-No code edits — the integration works. Only the token/scopes in GHL need adjustment.
+Add a link on `/admin/users` header ("GHL sync history") pointing at the new route so admins can find it.
+
+## Verification
+
+1. Click **Run now** on `/admin/ghl-sync`.
+2. New row appears at top; expanding it shows the 8× "401 The token is not authorized for this scope." entries with matching emails.
+3. Fix the GHL token, click Run now again → new row shows `failed: 0`.
+
+## Technical details
+
+- Only two files gain non-trivial code: the cron helper (return-shape change + insert) and the new admin route. `runGhlSyncNow` gets a one-line `('manual')` arg.
+- Errors JSON is truncated at 100 entries with a `truncated: true` flag when a nightly run has more failures — protects the row size.
+- Migration includes GRANTs for `authenticated` (SELECT) and `service_role` (ALL), plus RLS policy scoped to admins.

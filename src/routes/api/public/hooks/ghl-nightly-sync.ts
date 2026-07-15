@@ -15,7 +15,7 @@ export const Route = createFileRoute("/api/public/hooks/ghl-nightly-sync")({
           return new Response("Unauthorized", { status: 401 });
         }
         const { runNightlyGhlSync } = await import("@/lib/ghl-cron.server");
-        const summary = await runNightlyGhlSync();
+        const summary = await runNightlyGhlSync("cron");
         return Response.json(summary);
       },
     },

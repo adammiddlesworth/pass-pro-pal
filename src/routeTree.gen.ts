@@ -31,6 +31,7 @@ import { Route as AuthenticatedExamsIndexRouteImport } from './routes/_authentic
 import { Route as PreviewExamSlugRouteImport } from './routes/preview.exam.$slug'
 import { Route as ExamsSlugTakeRouteImport } from './routes/exams.$slug.take'
 import { Route as AuthenticatedCheckoutResumeRouteImport } from './routes/_authenticated/checkout.resume'
+import { Route as AuthenticatedAdminGhlSyncRouteImport } from './routes/_authenticated/admin.ghl-sync'
 import { Route as AuthenticatedAdminExamsRouteImport } from './routes/_authenticated/admin.exams'
 import { Route as AuthenticatedAdminUsersIndexRouteImport } from './routes/_authenticated/admin.users.index'
 import { Route as ApiPublicPaymentsWebhookRouteImport } from './routes/api/public/payments/webhook'
@@ -148,6 +149,12 @@ const AuthenticatedCheckoutResumeRoute =
     path: '/checkout/resume',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedAdminGhlSyncRoute =
+  AuthenticatedAdminGhlSyncRouteImport.update({
+    id: '/admin/ghl-sync',
+    path: '/admin/ghl-sync',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedAdminExamsRoute = AuthenticatedAdminExamsRouteImport.update({
   id: '/admin/exams',
   path: '/admin/exams',
@@ -196,6 +203,7 @@ export interface FileRoutesByFullPath {
   '/review/$category': typeof ReviewCategoryRoute
   '/diagnostic/': typeof DiagnosticIndexRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
+  '/admin/ghl-sync': typeof AuthenticatedAdminGhlSyncRoute
   '/checkout/resume': typeof AuthenticatedCheckoutResumeRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
@@ -224,6 +232,7 @@ export interface FileRoutesByTo {
   '/review/$category': typeof ReviewCategoryRoute
   '/diagnostic': typeof DiagnosticIndexRoute
   '/admin/exams': typeof AuthenticatedAdminExamsRoute
+  '/admin/ghl-sync': typeof AuthenticatedAdminGhlSyncRoute
   '/checkout/resume': typeof AuthenticatedCheckoutResumeRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
@@ -254,6 +263,7 @@ export interface FileRoutesById {
   '/review/$category': typeof ReviewCategoryRoute
   '/diagnostic/': typeof DiagnosticIndexRoute
   '/_authenticated/admin/exams': typeof AuthenticatedAdminExamsRoute
+  '/_authenticated/admin/ghl-sync': typeof AuthenticatedAdminGhlSyncRoute
   '/_authenticated/checkout/resume': typeof AuthenticatedCheckoutResumeRoute
   '/exams/$slug/take': typeof ExamsSlugTakeRoute
   '/preview/exam/$slug': typeof PreviewExamSlugRoute
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/review/$category'
     | '/diagnostic/'
     | '/admin/exams'
+    | '/admin/ghl-sync'
     | '/checkout/resume'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
@@ -312,6 +323,7 @@ export interface FileRouteTypes {
     | '/review/$category'
     | '/diagnostic'
     | '/admin/exams'
+    | '/admin/ghl-sync'
     | '/checkout/resume'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
@@ -341,6 +353,7 @@ export interface FileRouteTypes {
     | '/review/$category'
     | '/diagnostic/'
     | '/_authenticated/admin/exams'
+    | '/_authenticated/admin/ghl-sync'
     | '/_authenticated/checkout/resume'
     | '/exams/$slug/take'
     | '/preview/exam/$slug'
@@ -529,6 +542,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCheckoutResumeRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/admin/ghl-sync': {
+      id: '/_authenticated/admin/ghl-sync'
+      path: '/admin/ghl-sync'
+      fullPath: '/admin/ghl-sync'
+      preLoaderRoute: typeof AuthenticatedAdminGhlSyncRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/admin/exams': {
       id: '/_authenticated/admin/exams'
       path: '/admin/exams'
@@ -573,6 +593,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
   AuthenticatedWeeklyRoute: typeof AuthenticatedWeeklyRoute
   AuthenticatedAdminExamsRoute: typeof AuthenticatedAdminExamsRoute
+  AuthenticatedAdminGhlSyncRoute: typeof AuthenticatedAdminGhlSyncRoute
   AuthenticatedCheckoutResumeRoute: typeof AuthenticatedCheckoutResumeRoute
   AuthenticatedExamsIndexRoute: typeof AuthenticatedExamsIndexRoute
   AuthenticatedAdminUsersUserIdRoute: typeof AuthenticatedAdminUsersUserIdRoute
@@ -585,6 +606,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
   AuthenticatedWeeklyRoute: AuthenticatedWeeklyRoute,
   AuthenticatedAdminExamsRoute: AuthenticatedAdminExamsRoute,
+  AuthenticatedAdminGhlSyncRoute: AuthenticatedAdminGhlSyncRoute,
   AuthenticatedCheckoutResumeRoute: AuthenticatedCheckoutResumeRoute,
   AuthenticatedExamsIndexRoute: AuthenticatedExamsIndexRoute,
   AuthenticatedAdminUsersUserIdRoute: AuthenticatedAdminUsersUserIdRoute,
