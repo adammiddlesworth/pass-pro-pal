@@ -182,48 +182,91 @@ function AdminUsersPage() {
                     <th className="px-4 py-3 text-right">Avg Score</th>
                     <th className="px-4 py-3 text-right">Purchases</th>
                     <th className="px-4 py-3">Last Active</th>
+                    <th className="px-4 py-3">GHL</th>
+                    <th className="px-4 py-3"></th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map((u) => (
-                    <tr
-                      key={u.id}
-                      className="cursor-pointer border-b transition-colors hover:bg-muted/40"
-                      onClick={() =>
-                        navigate({
-                          to: "/admin/users/$userId",
-                          params: { userId: u.id },
-                        })
-                      }
-                    >
-                      <td className="px-4 py-3">
-                        <div className="font-medium">
-                          {u.display_name || "—"}
-                        </div>
-                        <div className="text-xs text-muted-foreground">
-                          {u.email || u.id.slice(0, 8)}
-                        </div>
-                      </td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {u.active_track || "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right">{u.attempts_total}</td>
-                      <td className="px-4 py-3 text-right">
-                        {u.attempts_completed}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        {u.avg_score_pct != null
-                          ? `${u.avg_score_pct.toFixed(0)}%`
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-3 text-right">{u.purchases_count}</td>
-                      <td className="px-4 py-3 text-muted-foreground">
-                        {u.last_active_at
-                          ? new Date(u.last_active_at).toLocaleDateString()
-                          : "—"}
-                      </td>
-                    </tr>
-                  ))}
+                  {rows.map((u) => {
+                    const status = u.ghl_sync_status;
+                    const badgeClass =
+                      status === "synced"
+                        ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                        : status === "failed"
+                          ? "bg-red-500/15 text-red-600 dark:text-red-400"
+                          : "bg-muted text-muted-foreground";
+                    const label = status ?? "never";
+                    const isSyncingRow = syncingId === u.id;
+                    return (
+                      <tr
+                        key={u.id}
+                        className="cursor-pointer border-b transition-colors hover:bg-muted/40"
+                        onClick={() =>
+                          navigate({
+                            to: "/admin/users/$userId",
+                            params: { userId: u.id },
+                          })
+                        }
+                      >
+                        <td className="px-4 py-3">
+                          <div className="font-medium">
+                            {u.display_name || "—"}
+                          </div>
+                          <div className="text-xs text-muted-foreground">
+                            {u.email || u.id.slice(0, 8)}
+                          </div>
+                        </td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {u.active_track || "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right">{u.attempts_total}</td>
+                        <td className="px-4 py-3 text-right">
+                          {u.attempts_completed}
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          {u.avg_score_pct != null
+                            ? `${u.avg_score_pct.toFixed(0)}%`
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-3 text-right">{u.purchases_count}</td>
+                        <td className="px-4 py-3 text-muted-foreground">
+                          {u.last_active_at
+                            ? new Date(u.last_active_at).toLocaleDateString()
+                            : "—"}
+                        </td>
+                        <td className="px-4 py-3">
+                          <span
+                            className={`inline-flex rounded px-2 py-0.5 text-xs font-medium ${badgeClass}`}
+                            title={
+                              u.ghl_last_error
+                                ? `Last error: ${u.ghl_last_error}`
+                                : u.ghl_last_synced_at
+                                  ? `Last synced: ${new Date(u.ghl_last_synced_at).toLocaleString()}`
+                                  : "Never synced"
+                            }
+                          >
+                            {label}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            disabled={isSyncingRow || bulkProgress !== null}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              syncOne(u.id);
+                            }}
+                          >
+                            <RefreshCw
+                              className={`mr-1.5 h-3.5 w-3.5 ${isSyncingRow ? "animate-spin" : ""}`}
+                            />
+                            {status === "failed" ? "Retry" : "Sync"}
+                          </Button>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
