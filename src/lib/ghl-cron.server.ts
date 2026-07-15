@@ -14,6 +14,8 @@ const ACTIVE_WINDOW_DAYS = 90;
 const PSEUDO_TOPICS = new Set(["mixed", "final-exam-practice"]);
 const PASS_MARK = 70;
 
+export type GhlSyncError = { user_id: string; email: string | null; error: string };
+
 type SyncSummary = {
   processed: number;
   succeeded: number;
@@ -21,6 +23,12 @@ type SyncSummary = {
   skipped: number;
   durationMs: number;
 };
+
+export type SyncUserResult =
+  | { ok: true; email: string | null }
+  | { ok: false; email: string | null; error: string };
+
+const MAX_ERRORS_STORED = 100;
 
 function daysBetween(a: Date, b: Date) {
   return Math.floor((a.getTime() - b.getTime()) / 86_400_000);
