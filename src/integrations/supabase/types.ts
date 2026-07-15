@@ -135,6 +135,51 @@ export type Database = {
         }
         Relationships: []
       }
+      ghl_sync_runs: {
+        Row: {
+          created_at: string
+          duration_ms: number
+          errors: Json
+          failed: number
+          finished_at: string | null
+          id: string
+          processed: number
+          skipped: number
+          started_at: string
+          succeeded: number
+          trigger: string
+          truncated: boolean
+        }
+        Insert: {
+          created_at?: string
+          duration_ms?: number
+          errors?: Json
+          failed?: number
+          finished_at?: string | null
+          id?: string
+          processed?: number
+          skipped?: number
+          started_at?: string
+          succeeded?: number
+          trigger: string
+          truncated?: boolean
+        }
+        Update: {
+          created_at?: string
+          duration_ms?: number
+          errors?: Json
+          failed?: number
+          finished_at?: string | null
+          id?: string
+          processed?: number
+          skipped?: number
+          started_at?: string
+          succeeded?: number
+          trigger?: string
+          truncated?: boolean
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           active_track: string | null
