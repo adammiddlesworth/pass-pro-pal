@@ -1,9 +1,9 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { checkIsAdmin } from "@/lib/admin.functions";
 import { listUsers } from "@/lib/admin-users.functions";
-import { runGhlSyncNow } from "@/lib/ghl-sync.functions";
+import { runGhlSyncNow, syncOneUserToGhl } from "@/lib/ghl-sync.functions";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -21,7 +21,10 @@ function AdminUsersPage() {
   });
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [syncingId, setSyncingId] = useState<string | null>(null);
+  const [bulkProgress, setBulkProgress] = useState<{ done: number; total: number } | null>(null);
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
 
   const { data, isLoading } = useQuery({
     queryKey: ["admin-users", page, search],
@@ -31,12 +34,57 @@ function AdminUsersPage() {
 
   const ghlSync = useMutation({
     mutationFn: () => runGhlSyncNow(),
-    onSuccess: (s: any) =>
+    onSuccess: (s: any) => {
       toast.success(
         `GHL sync: ${s.succeeded}/${s.processed} succeeded (${s.failed} failed) in ${Math.round(s.durationMs / 1000)}s`,
-      ),
+      );
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    },
     onError: (e: any) => toast.error(e?.message ?? "GHL sync failed"),
   });
+
+  function friendlyError(msg: string): string {
+    if (/\b401\b/.test(msg)) return "401 — GHL token invalid or missing scopes (contacts.readonly, contacts.write).";
+    const m422 = msg.match(/\b422\b[\s:-]*(.*)$/);
+    if (m422) return `422 — validation failed: ${m422[1] || msg}`;
+    return msg;
+  }
+
+  async function syncOne(userId: string) {
+    setSyncingId(userId);
+    try {
+      const r: any = await syncOneUserToGhl({ data: { userId } });
+      if (r?.ok) toast.success(`Synced ${r.email ?? "user"} to GHL`);
+      else toast.error(friendlyError(r?.error ?? "Sync failed"));
+    } catch (e: any) {
+      toast.error(friendlyError(e?.message ?? "Sync failed"));
+    } finally {
+      setSyncingId(null);
+      queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    }
+  }
+
+  async function syncAllVisible(ids: string[]) {
+    setBulkProgress({ done: 0, total: ids.length });
+    let succeeded = 0;
+    let failed = 0;
+    for (let i = 0; i < ids.length; i++) {
+      try {
+        const r: any = await syncOneUserToGhl({ data: { userId: ids[i] } });
+        if (r?.ok) succeeded += 1;
+        else failed += 1;
+      } catch {
+        failed += 1;
+      }
+      setBulkProgress({ done: i + 1, total: ids.length });
+      // ~150ms between requests keeps us well under 100 req / 10s.
+      await new Promise((res) => setTimeout(res, 150));
+    }
+    setBulkProgress(null);
+    queryClient.invalidateQueries({ queryKey: ["admin-users"] });
+    toast.success(`Bulk sync done: ${succeeded} synced, ${failed} failed`);
+  }
+
 
   if (checkingAdmin) {
     return (
