@@ -91,5 +91,5 @@ export const runGhlSyncNow = createServerFn({ method: "POST" })
     });
     if (!isAdmin) throw new Error("Forbidden: admin role required");
     const { runNightlyGhlSync } = await import("./ghl-cron.server");
-    return runNightlyGhlSync();
+    return runNightlyGhlSync("manual");
   });
