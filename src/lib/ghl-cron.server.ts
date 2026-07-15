@@ -76,23 +76,36 @@ function testDateTags(testDate: string | null): {
  * logged and swallowed. Returns whether it succeeded so the caller can tally.
  */
 export async function syncUserToGhl(userId: string): Promise<boolean> {
+  const r = await syncUserToGhlDetailed(userId);
+  return r.ok;
+}
+
+/**
+ * Detailed variant that returns the GHL error string on failure so the
+ * caller (nightly runner) can persist per-contact failures.
+ */
+export async function syncUserToGhlDetailed(
+  userId: string,
+): Promise<SyncUserResult> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const {
     upsertContact,
     reconcilePasspalTags,
   } = await import("@/lib/ghl.server");
 
+  let email: string | null = null;
   try {
     // Auth user (email + last sign-in from auth.users).
     const { data: userRes, error: userErr } =
       await supabaseAdmin.auth.admin.getUserById(userId);
     if (userErr || !userRes?.user) {
+      const msg = userErr?.message ?? "getUserById returned no user";
       console.error("[ghl-cron] getUserById failed", userId, userErr);
-      return false;
+      return { ok: false, email: null, error: msg };
     }
     const authUser = userRes.user;
-    const email = authUser.email;
-    if (!email) return false;
+    email = authUser.email ?? null;
+    if (!email) return { ok: false, email: null, error: "no_email" };
 
     const meta = (authUser.user_metadata ?? {}) as Record<string, unknown>;
     const displayNameFromMeta =
