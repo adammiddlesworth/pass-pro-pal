@@ -2,7 +2,7 @@
  * GoHighLevel (LeadConnector) sync — server-only.
  *
  * Uses a Private Integration Token (PIT) scoped to one sub-account (location).
- * Requires env: GHL_PIT, GHL_LOCATION_ID.
+ * Requires env: GHL_API_TOKEN (or legacy GHL_PIT), GHL_LOCATION_ID.
  *
  * All calls are best-effort — they log on failure and never throw into the
  * caller's request path. CRM sync must never break signup, checkout, or
@@ -13,7 +13,7 @@ const GHL_BASE = "https://services.leadconnectorhq.com";
 const GHL_VERSION = "2021-07-28";
 
 function creds() {
-  const token = process.env.GHL_PIT;
+  const token = process.env.GHL_API_TOKEN ?? process.env.GHL_PIT;
   const locationId = process.env.GHL_LOCATION_ID;
   if (!token || !locationId) return null;
   return { token, locationId };
@@ -59,7 +59,7 @@ async function safeFetch(url: string, init: RequestInit): Promise<Response | nul
 export async function upsertContact(input: GhlUpsertInput): Promise<GhlUpsertResult> {
   const c = creds();
   if (!c) {
-    console.warn("[ghl] GHL_PIT / GHL_LOCATION_ID not set — skipping sync");
+    console.warn("[ghl] GHL_API_TOKEN / GHL_LOCATION_ID not set — skipping sync");
     return { ok: false, error: "not_configured" };
   }
   if (!input.email) return { ok: false, error: "missing_email" };
