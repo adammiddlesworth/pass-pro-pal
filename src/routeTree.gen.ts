@@ -26,6 +26,7 @@ import { Route as AuthenticatedWeeklyRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedSelectTrackRouteImport } from './routes/_authenticated/select-track'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedContactsRouteImport } from './routes/_authenticated/contacts'
 import { Route as ExamsSlugIndexRouteImport } from './routes/exams.$slug.index'
 import { Route as AuthenticatedExamsIndexRouteImport } from './routes/_authenticated/exams.index'
 import { Route as PreviewExamSlugRouteImport } from './routes/preview.exam.$slug'
@@ -123,6 +124,11 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedContactsRoute = AuthenticatedContactsRouteImport.update({
+  id: '/contacts',
+  path: '/contacts',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const ExamsSlugIndexRoute = ExamsSlugIndexRouteImport.update({
   id: '/exams/$slug/',
   path: '/exams/$slug/',
@@ -194,6 +200,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/start': typeof StartRoute
   '/terms': typeof TermsRoute
+  '/contacts': typeof AuthenticatedContactsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/select-track': typeof AuthenticatedSelectTrackRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -223,6 +230,7 @@ export interface FileRoutesByTo {
   '/reset-password': typeof ResetPasswordRoute
   '/start': typeof StartRoute
   '/terms': typeof TermsRoute
+  '/contacts': typeof AuthenticatedContactsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/select-track': typeof AuthenticatedSelectTrackRoute
   '/settings': typeof AuthenticatedSettingsRoute
@@ -254,6 +262,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/start': typeof StartRoute
   '/terms': typeof TermsRoute
+  '/_authenticated/contacts': typeof AuthenticatedContactsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/select-track': typeof AuthenticatedSelectTrackRoute
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
@@ -285,6 +294,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/start'
     | '/terms'
+    | '/contacts'
     | '/dashboard'
     | '/select-track'
     | '/settings'
@@ -314,6 +324,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/start'
     | '/terms'
+    | '/contacts'
     | '/dashboard'
     | '/select-track'
     | '/settings'
@@ -344,6 +355,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/start'
     | '/terms'
+    | '/_authenticated/contacts'
     | '/_authenticated/dashboard'
     | '/_authenticated/select-track'
     | '/_authenticated/settings'
@@ -507,6 +519,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/contacts': {
+      id: '/_authenticated/contacts'
+      path: '/contacts'
+      fullPath: '/contacts'
+      preLoaderRoute: typeof AuthenticatedContactsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/exams/$slug/': {
       id: '/exams/$slug/'
       path: '/exams/$slug'
@@ -588,6 +607,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedContactsRoute: typeof AuthenticatedContactsRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedSelectTrackRoute: typeof AuthenticatedSelectTrackRoute
   AuthenticatedSettingsRoute: typeof AuthenticatedSettingsRoute
@@ -601,6 +621,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedContactsRoute: AuthenticatedContactsRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedSelectTrackRoute: AuthenticatedSelectTrackRoute,
   AuthenticatedSettingsRoute: AuthenticatedSettingsRoute,
