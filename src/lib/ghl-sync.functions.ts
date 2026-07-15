@@ -94,6 +94,22 @@ export const runGhlSyncNow = createServerFn({ method: "POST" })
     return runNightlyGhlSync("manual");
   });
 
+/**
+ * Admin-only: sync a single user to GHL on demand (per-row button + retry).
+ */
+export const syncOneUserToGhl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: { userId: string }) => d)
+  .handler(async ({ data, context }) => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Forbidden: admin role required");
+    const { syncUserToGhlDetailed } = await import("./ghl-cron.server");
+    return syncUserToGhlDetailed(data.userId);
+  });
+
 export type GhlSyncRunRow = {
   id: string;
   trigger: "cron" | "manual" | "signin";

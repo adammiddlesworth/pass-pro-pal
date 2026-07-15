@@ -185,6 +185,10 @@ export type Database = {
           active_track: string | null
           created_at: string
           display_name: string | null
+          ghl_contact_id: string | null
+          ghl_last_error: string | null
+          ghl_last_synced_at: string | null
+          ghl_sync_status: string | null
           ghl_synced_at: string | null
           id: string
           test_date: string | null
@@ -194,6 +198,10 @@ export type Database = {
           active_track?: string | null
           created_at?: string
           display_name?: string | null
+          ghl_contact_id?: string | null
+          ghl_last_error?: string | null
+          ghl_last_synced_at?: string | null
+          ghl_sync_status?: string | null
           ghl_synced_at?: string | null
           id: string
           test_date?: string | null
@@ -203,6 +211,10 @@ export type Database = {
           active_track?: string | null
           created_at?: string
           display_name?: string | null
+          ghl_contact_id?: string | null
+          ghl_last_error?: string | null
+          ghl_last_synced_at?: string | null
+          ghl_sync_status?: string | null
           ghl_synced_at?: string | null
           id?: string
           test_date?: string | null

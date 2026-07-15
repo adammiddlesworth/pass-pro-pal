@@ -24,6 +24,10 @@ export type AdminUserRow = {
   avg_score_pct: number | null;
   last_active_at: string | null;
   purchases_count: number;
+  ghl_sync_status: string | null;
+  ghl_contact_id: string | null;
+  ghl_last_error: string | null;
+  ghl_last_synced_at: string | null;
 };
 
 export type AdminUsersPage = {
@@ -56,7 +60,7 @@ export const listUsers = createServerFn({ method: "POST" })
     const [profilesRes, attemptsRes, purchasesRes] = await Promise.all([
       supabaseAdmin
         .from("profiles")
-        .select("id, display_name, active_track, test_date")
+        .select("id, display_name, active_track, test_date, ghl_sync_status, ghl_contact_id, ghl_last_error, ghl_last_synced_at")
         .in("id", ids),
       supabaseAdmin
         .from("user_attempts")
@@ -113,6 +117,10 @@ export const listUsers = createServerFn({ method: "POST" })
         avg_score_pct: avg,
         last_active_at: lastActive ?? null,
         purchases_count: purchasesByUser.get(u.id) || 0,
+        ghl_sync_status: prof?.ghl_sync_status ?? null,
+        ghl_contact_id: prof?.ghl_contact_id ?? null,
+        ghl_last_error: prof?.ghl_last_error ?? null,
+        ghl_last_synced_at: prof?.ghl_last_synced_at ?? null,
       };
     });
 
