@@ -60,7 +60,7 @@ export const listUsers = createServerFn({ method: "POST" })
     const [profilesRes, attemptsRes, purchasesRes] = await Promise.all([
       supabaseAdmin
         .from("profiles")
-        .select("id, display_name, active_track, test_date")
+        .select("id, display_name, active_track, test_date, ghl_sync_status, ghl_contact_id, ghl_last_error, ghl_last_synced_at")
         .in("id", ids),
       supabaseAdmin
         .from("user_attempts")
