@@ -49,6 +49,51 @@ export type Database = {
           },
         ]
       }
+      contacts: {
+        Row: {
+          created_at: string
+          email: string | null
+          first_name: string | null
+          ghl_contact_id: string | null
+          ghl_last_error: string | null
+          ghl_last_synced_at: string | null
+          ghl_sync_status: string
+          id: string
+          last_name: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          ghl_contact_id?: string | null
+          ghl_last_error?: string | null
+          ghl_last_synced_at?: string | null
+          ghl_sync_status?: string
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          first_name?: string | null
+          ghl_contact_id?: string | null
+          ghl_last_error?: string | null
+          ghl_last_synced_at?: string | null
+          ghl_sync_status?: string
+          id?: string
+          last_name?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       exam_tags: {
         Row: {
           created_at: string
