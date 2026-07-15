@@ -93,3 +93,39 @@ export const runGhlSyncNow = createServerFn({ method: "POST" })
     const { runNightlyGhlSync } = await import("./ghl-cron.server");
     return runNightlyGhlSync("manual");
   });
+
+export type GhlSyncRunRow = {
+  id: string;
+  trigger: "cron" | "manual" | "signin";
+  started_at: string;
+  finished_at: string | null;
+  processed: number;
+  succeeded: number;
+  failed: number;
+  skipped: number;
+  duration_ms: number;
+  errors: Array<{ user_id: string; email: string | null; error: string }>;
+  truncated: boolean;
+};
+
+/**
+ * Admin-only: last 20 GHL sync runs with per-contact errors.
+ */
+export const listGhlSyncRuns = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<{ runs: GhlSyncRunRow[] }> => {
+    const { data: isAdmin } = await context.supabase.rpc("has_role", {
+      _user_id: context.userId,
+      _role: "admin",
+    });
+    if (!isAdmin) throw new Error("Forbidden: admin role required");
+    const { data, error } = await context.supabase
+      .from("ghl_sync_runs" as any)
+      .select(
+        "id, trigger, started_at, finished_at, processed, succeeded, failed, skipped, duration_ms, errors, truncated",
+      )
+      .order("started_at", { ascending: false })
+      .limit(20);
+    if (error) throw new Error(error.message);
+    return { runs: (data ?? []) as unknown as GhlSyncRunRow[] };
+  });
