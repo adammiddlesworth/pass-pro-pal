@@ -193,7 +193,7 @@ export async function syncUserToGhlDetailed(
       lastActivity &&
       daysBetween(new Date(), lastActivity) > ACTIVE_WINDOW_DAYS
     ) {
-      return false;
+      return { ok: false, email, error: "skipped_inactive" };
     }
 
     // ---------- Build payload ----------
@@ -236,7 +236,7 @@ export async function syncUserToGhlDetailed(
 
     if (!upsertResult.ok) {
       console.error(`[ghl-cron] upsert failed for ${email}: ${upsertResult.error}`);
-      return false;
+      return { ok: false, email, error: upsertResult.error };
     }
 
     // Mark first-time synced so the on-signup path doesn't re-send.
@@ -249,10 +249,10 @@ export async function syncUserToGhlDetailed(
 
     // Remove any stale passpal-* tags that no longer apply.
     await reconcilePasspalTags(upsertResult.contactId, desiredPasspalTags);
-    return true;
+    return { ok: true, email };
   } catch (e) {
     console.error("[ghl-cron] syncUserToGhl error", userId, e);
-    return false;
+    return { ok: false, email, error: e instanceof Error ? e.message : String(e) };
   }
 }
 
