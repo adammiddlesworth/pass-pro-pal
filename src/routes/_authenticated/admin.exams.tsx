@@ -236,6 +236,7 @@ const emptyForm: FormState = {
   status: "draft",
   description: "",
   is_sample: false,
+  is_diagnostic: false,
   is_timed_final: false,
   time_limit_minutes: "",
   exam_number: "",
