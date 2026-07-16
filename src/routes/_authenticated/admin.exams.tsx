@@ -140,6 +140,11 @@ function ExamsList() {
                       {exam.status}
                     </Badge>
                     {exam.is_sample && <Badge variant="outline">Sample</Badge>}
+                    {exam.is_diagnostic && (
+                      <Badge className="bg-primary/15 text-primary" variant="outline">
+                        Diagnostic
+                      </Badge>
+                    )}
                     {exam.is_timed_final && (
                       <Badge className="bg-primary text-primary-foreground">Timed Final</Badge>
                     )}
