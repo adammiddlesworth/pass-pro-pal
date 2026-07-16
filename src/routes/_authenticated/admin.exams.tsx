@@ -306,6 +306,7 @@ function ExamEditor({ id }: { id: string | undefined }) {
           status: form.status || "draft",
           description: form.description || null,
           is_sample: form.is_sample,
+          is_diagnostic: form.is_diagnostic,
           is_timed_final: form.is_timed_final,
           time_limit_minutes: form.is_timed_final
             ? (form.time_limit_minutes
