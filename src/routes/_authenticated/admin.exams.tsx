@@ -214,6 +214,7 @@ type FormState = {
   status: "draft" | "published" | "archived";
   description: string;
   is_sample: boolean;
+  is_diagnostic: boolean;
   is_timed_final: boolean;
   time_limit_minutes: string;
   exam_number: string;
