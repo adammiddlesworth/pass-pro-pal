@@ -127,6 +127,7 @@ export type Database = {
           description: string | null
           exam_number: number | null
           id: string
+          is_diagnostic: boolean
           is_sample: boolean
           is_timed_final: boolean
           price_cents: number | null
@@ -146,6 +147,7 @@ export type Database = {
           description?: string | null
           exam_number?: number | null
           id?: string
+          is_diagnostic?: boolean
           is_sample?: boolean
           is_timed_final?: boolean
           price_cents?: number | null
@@ -165,6 +167,7 @@ export type Database = {
           description?: string | null
           exam_number?: number | null
           id?: string
+          is_diagnostic?: boolean
           is_sample?: boolean
           is_timed_final?: boolean
           price_cents?: number | null
