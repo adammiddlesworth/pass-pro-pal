@@ -67,6 +67,7 @@ const examInputSchema = z.object({
   status: z.enum(["draft", "published", "archived"]).default("draft"),
   description: z.string().max(2000).nullable().optional(),
   is_sample: z.boolean(),
+  is_diagnostic: z.boolean().optional().default(false),
   is_timed_final: z.boolean().optional().default(false),
   time_limit_minutes: z.number().int().positive().max(600).nullable().optional(),
   exam_number: z.number().int().nullable().optional(),
