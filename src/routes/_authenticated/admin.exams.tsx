@@ -271,6 +271,7 @@ function ExamEditor({ id }: { id: string | undefined }) {
         status: existing.status,
         description: existing.description ?? "",
         is_sample: !!existing.is_sample,
+        is_diagnostic: !!existing.is_diagnostic,
         is_timed_final: !!existing.is_timed_final,
         time_limit_minutes:
           existing.time_limit_minutes != null ? String(existing.time_limit_minutes) : "",
