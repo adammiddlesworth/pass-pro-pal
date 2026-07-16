@@ -514,6 +514,25 @@ function ExamEditor({ id }: { id: string | undefined }) {
               <div className="md:col-span-2 rounded-md border border-dashed p-4">
                 <div className="flex items-center gap-2">
                   <Checkbox
+                    id="is_diagnostic"
+                    checked={form.is_diagnostic}
+                    onCheckedChange={(v) => setForm({ ...form, is_diagnostic: !!v })}
+                  />
+                  <Label htmlFor="is_diagnostic" className="cursor-pointer">
+                    Use as diagnostic exam
+                  </Label>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  When on, this exam replaces the auto-generated diagnostic for its
+                  category. Only one exam per category can be the diagnostic — turning
+                  this on will turn it off on any other exam in the same track.
+                </p>
+              </div>
+
+
+              <div className="md:col-span-2 rounded-md border border-dashed p-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox
                     id="is_timed_final"
                     checked={form.is_timed_final}
                     onCheckedChange={(v) => setForm({ ...form, is_timed_final: !!v })}
