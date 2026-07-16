@@ -140,6 +140,11 @@ function ExamsList() {
                       {exam.status}
                     </Badge>
                     {exam.is_sample && <Badge variant="outline">Sample</Badge>}
+                    {exam.is_diagnostic && (
+                      <Badge className="bg-primary/15 text-primary" variant="outline">
+                        Diagnostic
+                      </Badge>
+                    )}
                     {exam.is_timed_final && (
                       <Badge className="bg-primary text-primary-foreground">Timed Final</Badge>
                     )}
@@ -209,6 +214,7 @@ type FormState = {
   status: "draft" | "published" | "archived";
   description: string;
   is_sample: boolean;
+  is_diagnostic: boolean;
   is_timed_final: boolean;
   time_limit_minutes: string;
   exam_number: string;
@@ -230,6 +236,7 @@ const emptyForm: FormState = {
   status: "draft",
   description: "",
   is_sample: false,
+  is_diagnostic: false,
   is_timed_final: false,
   time_limit_minutes: "",
   exam_number: "",
@@ -264,6 +271,7 @@ function ExamEditor({ id }: { id: string | undefined }) {
         status: existing.status,
         description: existing.description ?? "",
         is_sample: !!existing.is_sample,
+        is_diagnostic: !!existing.is_diagnostic,
         is_timed_final: !!existing.is_timed_final,
         time_limit_minutes:
           existing.time_limit_minutes != null ? String(existing.time_limit_minutes) : "",
@@ -298,6 +306,7 @@ function ExamEditor({ id }: { id: string | undefined }) {
           status: form.status || "draft",
           description: form.description || null,
           is_sample: form.is_sample,
+          is_diagnostic: form.is_diagnostic,
           is_timed_final: form.is_timed_final,
           time_limit_minutes: form.is_timed_final
             ? (form.time_limit_minutes
@@ -501,6 +510,25 @@ function ExamEditor({ id }: { id: string | undefined }) {
                   Free sample exam
                 </Label>
               </div>
+
+              <div className="md:col-span-2 rounded-md border border-dashed p-4">
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    id="is_diagnostic"
+                    checked={form.is_diagnostic}
+                    onCheckedChange={(v) => setForm({ ...form, is_diagnostic: !!v })}
+                  />
+                  <Label htmlFor="is_diagnostic" className="cursor-pointer">
+                    Use as diagnostic exam
+                  </Label>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  When on, this exam replaces the auto-generated diagnostic for its
+                  category. Only one exam per category can be the diagnostic — turning
+                  this on will turn it off on any other exam in the same track.
+                </p>
+              </div>
+
 
               <div className="md:col-span-2 rounded-md border border-dashed p-4">
                 <div className="flex items-center gap-2">

@@ -1,45 +1,42 @@
 ## Goal
 
-Give admins a `/admin/ghl-sync` page that shows recent GHL sync runs (nightly cron + on-demand) with per-contact success/failure and the exact error string returned by GHL (e.g. the 401 scope message).
+Let admins flag a specific exam as the diagnostic for each track (Real Estate, Life & Health). When a user takes the diagnostic for that category, use every question from the flagged exam instead of auto-picking questions from every published exam.
 
-## Data model — new table
+## Schema
 
-`public.ghl_sync_runs`
-- `trigger` text — `'cron'` | `'manual'` | `'signin'`
-- `started_at`, `finished_at` timestamptz
-- `processed`, `succeeded`, `failed`, `skipped` int
-- `errors` jsonb — array of `{ user_id, email, error }`; capped to first 100 to keep rows small
-- RLS: admins-only SELECT via `has_role(auth.uid(),'admin')`; no client INSERT (writes come from `supabaseAdmin`).
+Add `is_diagnostic boolean not null default false` to `public.exams`.
 
-## Instrumentation
+Enforce "one flagged exam per category" with a partial unique index:
+```
+create unique index exams_one_diagnostic_per_category
+  on public.exams (category) where is_diagnostic;
+```
+The admin form will also clear the flag on any other exam in the same category before saving, so toggling it on is one click (no unique-violation error).
 
-Update `src/lib/ghl-cron.server.ts`:
-- `syncUserToGhl` returns `{ ok, error?, email? }` instead of `boolean`, surfacing the exact `upsertResult.error` string.
-- `runNightlyGhlSync(trigger)` collects failures and writes one row into `ghl_sync_runs` at the end (best-effort; a logging failure never blocks the sync).
+## Admin UI (`src/routes/_authenticated/admin.exams.tsx`)
 
-Update callers so the run source is recorded:
-- `api/public/hooks/ghl-nightly-sync` → `'cron'`
-- `runGhlSyncNow` (admin button) → `'manual'`
-- `syncCurrentUserToGhl` stays as-is (single-user, not a "run").
+- Add a "Use as diagnostic exam" checkbox in the exam form, right next to the existing "Sample" toggle.
+- On save, if the checkbox is on, first `UPDATE exams SET is_diagnostic=false WHERE category=<cat> AND id<>this` (server fn using admin client), then set `is_diagnostic=true` on the current exam.
+- Show a small "Diagnostic" badge in the exam list next to the existing "Sample" badge.
 
-## Admin UI
+## Diagnostic flow (`src/lib/diagnostic.functions.ts`)
 
-New route `src/routes/_authenticated/admin.ghl-sync.tsx`:
-- Guards on `has_role('admin')` like other admin pages.
-- Server fn `listGhlSyncRuns` (admin-only) returns the last 20 runs.
-- UI shows a table: trigger, started_at, duration, counts (processed/succeeded/failed/skipped). Row-click expands to show the per-contact error list (email + error text) when `errors` is non-empty.
-- "Run now" button reuses existing `runGhlSyncNow`, then refetches the list.
+Inside `startDiagnostic`, before the current auto-pick logic:
+1. Look up the flagged exam: `exams` where `category = data.category AND is_diagnostic = true AND status = 'published'`.
+2. If found, load all its questions in `order_index` order, tag each question with its exam topic (via `exam_tags`) so topic-level scoring still works, insert the `user_attempts` row with `exam_id` set to that exam, and return that list. No 20-cap, no random pick.
+3. If none is flagged, fall back to today's auto-selection so nothing breaks for tracks the admin hasn't set up yet.
 
-Add a link on `/admin/users` header ("GHL sync history") pointing at the new route so admins can find it.
+The rest of the diagnostic pipeline (`completeDiagnostic`, report page, one-per-user rule) is unchanged.
 
 ## Verification
 
-1. Click **Run now** on `/admin/ghl-sync`.
-2. New row appears at top; expanding it shows the 8× "401 The token is not authorized for this scope." entries with matching emails.
-3. Fix the GHL token, click Run now again → new row shows `failed: 0`.
+1. In `/admin/exams`, open one of your new diagnostic exams, tick "Use as diagnostic exam", save. Repeat for the other category.
+2. As a fresh user (no prior diagnostic), open `/diagnostic/real_estate` → the questions shown match the flagged exam, in the exam's own order, and the count equals the exam's `question_count`.
+3. Complete it → results page renders with topic breakdown as before.
+4. Untick the flag → next new user's diagnostic falls back to the auto-selected 20-question sample.
 
 ## Technical details
 
-- Only two files gain non-trivial code: the cron helper (return-shape change + insert) and the new admin route. `runGhlSyncNow` gets a one-line `('manual')` arg.
-- Errors JSON is truncated at 100 entries with a `truncated: true` flag when a nightly run has more failures — protects the row size.
-- Migration includes GRANTs for `authenticated` (SELECT) and `service_role` (ALL), plus RLS policy scoped to admins.
+- Migration adds the column + partial unique index; no data backfill needed (defaults to false).
+- Admin server fn that toggles the flag uses `supabaseAdmin` guarded by `requireSupabaseAuth` + `has_role('admin')`, matching the existing admin.exams pattern.
+- Topic labels for questions in the diagnostic exam come from `exam_tags` on that exam (already how the auto-pick logic groups questions), so `weakestTopics` / `strongestTopics` continue to work.

@@ -65,6 +65,69 @@ export const startDiagnostic = createServerFn({ method: "POST" })
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
+    // If an admin flagged a specific exam as the diagnostic for this category,
+    // use every question from that exam instead of the auto-picked sample.
+    const { data: flaggedExam, error: flaggedErr } = await supabaseAdmin
+      .from("exams")
+      .select("id, exam_tags(tag)")
+      .eq("status", "published")
+      .eq("category", category as any)
+      .eq("is_diagnostic", true)
+      .maybeSingle();
+    if (flaggedErr) throw flaggedErr;
+
+    if (flaggedExam) {
+      const topicSlugSet = new Set(topics.map((t) => t.slug));
+      const examTopicSlug =
+        ((flaggedExam as any).exam_tags || [])
+          .map((t: any) => t.tag as string)
+          .find((tag: string) => topicSlugSet.has(tag)) ?? null;
+      const examTopicLabel = examTopicSlug
+        ? topics.find((t) => t.slug === examTopicSlug)?.label ?? null
+        : null;
+
+      const { data: flaggedQuestions, error: fqErr } = await supabaseAdmin
+        .from("questions")
+        .select("id, text, explanation, order_index, answers(id, text, is_correct)")
+        .eq("exam_id", (flaggedExam as any).id)
+        .order("order_index", { ascending: true });
+      if (fqErr) throw fqErr;
+      if (!flaggedQuestions || flaggedQuestions.length === 0) {
+        throw new Error("Diagnostic exam has no questions");
+      }
+
+      const finalQuestions: DiagnosticQuestion[] = flaggedQuestions.map((q: any) => ({
+        id: q.id,
+        text: q.text,
+        explanation: q.explanation,
+        topic_slug: examTopicSlug,
+        topic_label: examTopicLabel,
+        answers: (q.answers || []).map((a: any) => ({
+          id: a.id,
+          text: a.text,
+          is_correct: !!a.is_correct,
+        })),
+      }));
+
+      const { data: attempt, error: aErr } = await supabase
+        .from("user_attempts")
+        .insert({
+          user_id: userId,
+          exam_id: (flaggedExam as any).id,
+          total: finalQuestions.length,
+          attempt_type: "diagnostic",
+          category: category as any,
+          started_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      if (aErr) throw aErr;
+
+      return { attemptId: attempt.id, category, questions: finalQuestions };
+    }
+
+
+
     // Pull all published exams in category with tags.
     const { data: exams, error: examsErr } = await supabaseAdmin
       .from("exams")
