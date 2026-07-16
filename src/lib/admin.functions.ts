@@ -100,8 +100,21 @@ export const saveExam = createServerFn({ method: "POST" })
       youtube_video_id: fields.youtube_video_id || null,
       exam_number: fields.exam_number ?? null,
       is_timed_final: !!fields.is_timed_final,
+      is_diagnostic: !!fields.is_diagnostic,
       time_limit_minutes: resolvedTimeLimit,
     };
+
+    // Enforce a single diagnostic exam per category: clear the flag on all others first.
+    if (payload.is_diagnostic) {
+      let q = context.supabase
+        .from("exams")
+        .update({ is_diagnostic: false })
+        .eq("category", fields.category)
+        .eq("is_diagnostic", true);
+      if (id) q = q.neq("id", id);
+      const { error: clearErr } = await q;
+      if (clearErr) throw clearErr;
+    }
 
     let examId = id;
     if (examId) {
