@@ -125,6 +125,17 @@ export async function syncUserToGhlDetailed(
     const activeTrack = (profile as any)?.active_track ?? null;
     const testDate = (profile as any)?.test_date ?? null;
 
+    // Purchases (paid access).
+    const { data: purchaseRows } = await supabaseAdmin
+      .from("purchases")
+      .select("product_id, status")
+      .eq("user_id", userId)
+      .eq("status", "completed");
+    const paidProductIds = ((purchaseRows || []) as any[]).map(
+      (p) => p.product_id as string,
+    );
+    const isPaid = paidProductIds.length > 0;
+
     // Streak.
     const { data: streak } = await supabaseAdmin
       .from("user_streaks")
