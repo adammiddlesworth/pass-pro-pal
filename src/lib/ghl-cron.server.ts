@@ -216,6 +216,9 @@ export async function syncUserToGhlDetailed(
       ...streakTags(streak?.current_streak ?? 0),
       ...(readinessScore !== null ? readinessTags(readinessScore) : []),
       ...testInfo.tags,
+      ...(isPaid
+        ? ["passpal-paid", ...paidProductIds.map((p) => `passpal-paid-${p}`)]
+        : ["passpal-free"]),
     ];
 
     const parts = (displayName || "").split(/\s+/).filter(Boolean);
