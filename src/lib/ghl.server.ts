@@ -44,14 +44,38 @@ export type GhlUpsertResult =
   | { ok: true; contactId: string }
   | { ok: false; error: string };
 
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Fetch wrapper that never throws and retries on GHL rate limiting (429)
+ * or transient 5xx, honouring Retry-After when present.
+ */
 async function safeFetch(url: string, init: RequestInit): Promise<Response | null> {
-  try {
-    return await fetch(url, init);
-  } catch (e) {
-    console.error("[ghl] network error", url, e);
-    return null;
+  const MAX_ATTEMPTS = 4;
+  for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    let res: Response;
+    try {
+      res = await fetch(url, init);
+    } catch (e) {
+      console.error("[ghl] network error", url, e);
+      if (attempt === MAX_ATTEMPTS) return null;
+      await sleep(500 * 2 ** (attempt - 1));
+      continue;
+    }
+
+    const retryable = res.status === 429 || res.status === 502 || res.status === 503;
+    if (!retryable || attempt === MAX_ATTEMPTS) return res;
+
+    const retryAfter = Number(res.headers.get("retry-after"));
+    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
+      ? Math.min(retryAfter * 1000, 10_000)
+      : 1000 * 2 ** (attempt - 1);
+    console.warn(`[ghl] ${res.status} on ${url} — retrying in ${waitMs}ms (attempt ${attempt})`);
+    await sleep(waitMs);
   }
+  return null;
 }
+
 
 /**
  * Upsert a contact by email in the configured location. Idempotent.

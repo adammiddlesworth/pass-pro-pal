@@ -238,6 +238,7 @@ export type Database = {
           ghl_last_synced_at: string | null
           ghl_sync_status: string | null
           ghl_synced_at: string | null
+          ghl_tags: string[] | null
           id: string
           test_date: string | null
           updated_at: string
@@ -251,6 +252,7 @@ export type Database = {
           ghl_last_synced_at?: string | null
           ghl_sync_status?: string | null
           ghl_synced_at?: string | null
+          ghl_tags?: string[] | null
           id: string
           test_date?: string | null
           updated_at?: string
@@ -264,6 +266,7 @@ export type Database = {
           ghl_last_synced_at?: string | null
           ghl_sync_status?: string | null
           ghl_synced_at?: string | null
+          ghl_tags?: string[] | null
           id?: string
           test_date?: string | null
           updated_at?: string
