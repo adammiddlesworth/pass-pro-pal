@@ -462,14 +462,17 @@ export async function runNightlyGhlSync(
   const ids = Array.from(userIds);
   console.log(`[ghl-cron] starting nightly sync for ${ids.length} users`);
 
-  const BATCH = 25;
-  const DELAY_MS = 250;
-  for (let i = 0; i < ids.length; i += BATCH) {
-    const chunk = ids.slice(i, i + BATCH);
-    const results = await Promise.all(
-      chunk.map(async (id) => ({ id, r: await syncUserToGhlDetailed(id) })),
-    );
-    for (const { id, r } of results) {
+  // Bounded-concurrency worker pool. GHL rate-limits per location, and each
+  // user costs up to 3 API calls, so keep the in-flight count low instead of
+  // firing wide parallel batches.
+  const CONCURRENCY = 5;
+  const PER_USER_DELAY_MS = 120;
+  let cursor = 0;
+
+  async function worker() {
+    while (cursor < ids.length) {
+      const id = ids[cursor++]!;
+      const r = await syncUserToGhlDetailed(id);
       summary.processed += 1;
       if (r.ok) {
         summary.succeeded += 1;
@@ -479,9 +482,14 @@ export async function runNightlyGhlSync(
         summary.failed += 1;
         errors.push({ user_id: id, email: r.email, error: r.error });
       }
+      await new Promise((res) => setTimeout(res, PER_USER_DELAY_MS));
     }
-    if (i + BATCH < ids.length) await new Promise((r) => setTimeout(r, DELAY_MS));
   }
+
+  await Promise.all(
+    Array.from({ length: Math.min(CONCURRENCY, ids.length) }, () => worker()),
+  );
+
 
   summary.durationMs = Date.now() - started;
   console.log(`[ghl-cron] nightly sync complete`, summary);
