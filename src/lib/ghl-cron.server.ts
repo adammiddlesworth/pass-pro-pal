@@ -117,9 +117,10 @@ export async function syncUserToGhlDetailed(
     // Profile.
     const { data: profile } = await supabaseAdmin
       .from("profiles")
-      .select("display_name, active_track, test_date")
+      .select("display_name, active_track, test_date, ghl_tags, ghl_synced_at")
       .eq("id", userId)
       .maybeSingle();
+
 
     const displayName = profile?.display_name || displayNameFromMeta || null;
     const activeTrack = (profile as any)?.active_track ?? null;
