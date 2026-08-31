@@ -263,11 +263,21 @@ export async function syncUserToGhlDetailed(
     }
 
     const nowIso = new Date().toISOString();
+    const sortedDesired = [...new Set(desiredPasspalTags)].sort();
+    const previousTags = Array.isArray((profile as any)?.ghl_tags)
+      ? ([...(profile as any).ghl_tags] as string[]).sort()
+      : null;
+    const tagsUnchanged =
+      previousTags !== null &&
+      previousTags.length === sortedDesired.length &&
+      previousTags.every((t, i) => t === sortedDesired[i]);
+
     const profileUpdate: Record<string, unknown> = {
       ghl_sync_status: "synced",
       ghl_contact_id: upsertResult.contactId,
       ghl_last_error: null,
       ghl_last_synced_at: nowIso,
+      ghl_tags: sortedDesired,
     };
     // Mark first-time synced so the on-signup path doesn't re-send.
     if (!(profile as any)?.ghl_synced_at) {
@@ -278,9 +288,14 @@ export async function syncUserToGhlDetailed(
       .update(profileUpdate as any)
       .eq("id", userId);
 
-    // Remove any stale passpal-* tags that no longer apply.
-    await reconcilePasspalTags(upsertResult.contactId, desiredPasspalTags);
+    // Remove any stale passpal-* tags that no longer apply. Skipped when the
+    // desired tag set is identical to what we last pushed — saves 1-2 GHL API
+    // calls per user and keeps us under the rate limit.
+    if (!tagsUnchanged) {
+      await reconcilePasspalTags(upsertResult.contactId, sortedDesired);
+    }
     return { ok: true, email };
+
   } catch (e) {
     console.error("[ghl-cron] syncUserToGhl error", userId, e);
     return { ok: false, email, error: e instanceof Error ? e.message : String(e) };
