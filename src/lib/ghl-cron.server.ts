@@ -481,9 +481,10 @@ export async function runNightlyGhlSync(
   // Bounded-concurrency worker pool. GHL rate-limits per location, and each
   // user costs up to 3 API calls, so keep the in-flight count low instead of
   // firing wide parallel batches.
-  const CONCURRENCY = 5;
-  const PER_USER_DELAY_MS = 120;
+  const CONCURRENCY = 3;
+  const PER_USER_DELAY_MS = 250;
   let cursor = 0;
+  const failedIds: string[] = [];
 
   async function worker() {
     while (cursor < ids.length) {
@@ -495,8 +496,7 @@ export async function runNightlyGhlSync(
       } else if (r.error === "skipped_inactive") {
         summary.skipped += 1;
       } else {
-        summary.failed += 1;
-        errors.push({ user_id: id, email: r.email, error: r.error });
+        failedIds.push(id);
       }
       await new Promise((res) => setTimeout(res, PER_USER_DELAY_MS));
     }
@@ -505,6 +505,23 @@ export async function runNightlyGhlSync(
   await Promise.all(
     Array.from({ length: Math.min(CONCURRENCY, ids.length) }, () => worker()),
   );
+
+  // Second pass: retry anything that failed, one at a time with a longer
+  // pause. Rate-limit rejections (429) almost always clear on a slow retry.
+  for (const id of failedIds) {
+    await new Promise((res) => setTimeout(res, 1500));
+    const r = await syncUserToGhlDetailed(id);
+    if (r.ok) {
+      summary.succeeded += 1;
+    } else if (r.error === "skipped_inactive") {
+      summary.skipped += 1;
+    } else {
+      summary.failed += 1;
+      errors.push({ user_id: id, email: r.email, error: r.error });
+    }
+  }
+
+
 
 
   summary.durationMs = Date.now() - started;
