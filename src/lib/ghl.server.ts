@@ -47,12 +47,51 @@ export type GhlUpsertResult =
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
- * Fetch wrapper that never throws and retries on GHL rate limiting (429)
- * or transient 5xx, honouring Retry-After when present.
+ * Global outgoing-request pacer. GHL allows 100 requests per rolling 10s per
+ * location; we self-limit to 50 per 10s (~5/sec) so bursts never trip it.
+ * Every GHL call in this module goes through here, so the limit holds no
+ * matter how many users the nightly sync walks in parallel.
+ */
+const RATE_WINDOW_MS = 10_000;
+const RATE_MAX_IN_WINDOW = 50;
+const recentCalls: number[] = [];
+let gate: Promise<void> = Promise.resolve();
+
+async function acquireSlot(): Promise<void> {
+  // Serialise slot acquisition so concurrent callers can't both pass the check.
+  const previous = gate;
+  let release!: () => void;
+  gate = new Promise<void>((res) => {
+    release = res;
+  });
+  await previous;
+  try {
+    for (;;) {
+      const now = Date.now();
+      while (recentCalls.length && now - recentCalls[0]! >= RATE_WINDOW_MS) {
+        recentCalls.shift();
+      }
+      if (recentCalls.length < RATE_MAX_IN_WINDOW) {
+        recentCalls.push(now);
+        return;
+      }
+      // Wait until the oldest call ages out of the window.
+      await sleep(RATE_WINDOW_MS - (now - recentCalls[0]!) + 50);
+    }
+  } finally {
+    release();
+  }
+}
+
+/**
+ * Fetch wrapper that never throws, paces all outgoing calls, and retries on
+ * GHL rate limiting (429) or transient 5xx. A 429 means the 10s window is
+ * saturated, so we wait a full window before retrying.
  */
 async function safeFetch(url: string, init: RequestInit): Promise<Response | null> {
-  const MAX_ATTEMPTS = 4;
+  const MAX_ATTEMPTS = 5;
   for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+    await acquireSlot();
     let res: Response;
     try {
       res = await fetch(url, init);
@@ -67,14 +106,27 @@ async function safeFetch(url: string, init: RequestInit): Promise<Response | nul
     if (!retryable || attempt === MAX_ATTEMPTS) return res;
 
     const retryAfter = Number(res.headers.get("retry-after"));
-    const waitMs = Number.isFinite(retryAfter) && retryAfter > 0
-      ? Math.min(retryAfter * 1000, 10_000)
-      : 1000 * 2 ** (attempt - 1);
+    let waitMs: number;
+    if (res.status === 429) {
+      // Drain GHL's full rolling window before trying again, and clear our
+      // own bookkeeping so we restart the window from scratch.
+      recentCalls.length = 0;
+      waitMs =
+        Number.isFinite(retryAfter) && retryAfter > 0
+          ? Math.min(retryAfter * 1000, 30_000)
+          : 11_000;
+    } else {
+      waitMs =
+        Number.isFinite(retryAfter) && retryAfter > 0
+          ? Math.min(retryAfter * 1000, 10_000)
+          : 1000 * 2 ** (attempt - 1);
+    }
     console.warn(`[ghl] ${res.status} on ${url} — retrying in ${waitMs}ms (attempt ${attempt})`);
     await sleep(waitMs);
   }
   return null;
 }
+
 
 
 /**
