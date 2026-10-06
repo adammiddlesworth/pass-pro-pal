@@ -21,6 +21,8 @@ import { Lock, Youtube, ChevronDown, RotateCcw, Timer, AlertCircle } from "lucid
 import { useTrackCheckout } from "@/hooks/use-track-checkout";
 import { youtubeEmbedUrl } from "@/lib/youtube";
 import { toast } from "sonner";
+import { getReadiness } from "@/lib/dashboard.functions";
+import { FINAL_UNLOCK_READINESS } from "@/lib/readiness";
 
 
 export const Route = createFileRoute("/exams/$slug/take")({
@@ -65,12 +67,25 @@ function QuizPage() {
   const isSample = !!(exam as any).is_sample;
   const hasAccess = purchased || isSample;
 
+  // Timed finals stay locked until readiness reaches the pre-final max.
+  const { data: readinessData, isLoading: readinessLoading } = useQuery({
+    queryKey: ["readiness", exam.category],
+    queryFn: () => getReadiness({ data: { category: exam.category } }),
+    enabled: isTimedFinal && !!user && hasAccess,
+  });
+  const finalLocked =
+    isTimedFinal &&
+    !!readinessData &&
+    !readinessData.passedTimedFinal &&
+    readinessData.readiness < FINAL_UNLOCK_READINESS;
+  const readinessPending = isTimedFinal && !!user && hasAccess && readinessLoading;
+
   // Only fetch questions once we know the user has access (sample or purchased).
   // For anonymous or paywalled visitors we render the paywall instead.
   const { data: questions = [] } = useQuery({
     queryKey: ["exam-questions", exam.id],
     queryFn: () => getExamQuestions({ data: { examId: exam.id } }),
-    enabled: isSample || (!!user && hasAccess),
+    enabled: (isSample || (!!user && hasAccess)) && !finalLocked && !readinessPending,
   });
 
   const effectiveTotal = questions.length;
@@ -237,6 +252,41 @@ function QuizPage() {
               <Button size="lg" onClick={handleUnlock} disabled={checkingOut}>
                 {checkingOut ? "Loading..." : "Unlock Full Access"}
               </Button>
+              <Link to="/exams">
+                <Button size="lg" variant="outline">Back to Exams</Button>
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Timed final locked until the user's readiness hits the threshold.
+  if (finalLocked && readinessData) {
+    return (
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <Card>
+          <CardContent className="p-8 text-center">
+            <div className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 text-primary">
+              <Lock className="h-7 w-7" />
+            </div>
+            <h1 className="text-2xl font-bold">The timed final is locked</h1>
+            <p className="mx-auto mt-3 max-w-md text-muted-foreground">
+              Reach a readiness score of {FINAL_UNLOCK_READINESS}% to unlock the final exam.
+              You're currently at {readinessData.readiness}%.
+            </p>
+            <Progress
+              value={(readinessData.readiness / FINAL_UNLOCK_READINESS) * 100}
+              className="mx-auto mt-5 max-w-sm"
+            />
+            <p className="mx-auto mt-4 max-w-md text-sm text-muted-foreground">
+              {readinessData.reason}
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <Link to="/dashboard">
+                <Button size="lg">View my readiness</Button>
+              </Link>
               <Link to="/exams">
                 <Button size="lg" variant="outline">Back to Exams</Button>
               </Link>

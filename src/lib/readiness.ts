@@ -45,6 +45,8 @@ export type ReadinessResult = {
 const COVERAGE_TARGET = 0.8; // 80%
 const COVERAGE_CAP = 75; // max readiness while coverage < target
 const FINAL_GATE_CAP = 79; // max readiness while timed final not passed
+// Timed final unlocks once readiness reaches the highest pre-final score.
+export const FINAL_UNLOCK_READINESS = FINAL_GATE_CAP;
 export const STUDY_TIME_TARGET_HOURS = 30;
 const STUDY_TIME_CAP = 79; // max readiness while study time < target
 
