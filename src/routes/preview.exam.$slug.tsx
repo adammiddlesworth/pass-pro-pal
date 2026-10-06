@@ -28,7 +28,7 @@ export const Route = createFileRoute("/preview/exam/$slug")({
   errorComponent: ({ error }) => (
     <div className="mx-auto max-w-xl px-4 py-24 text-center">
       <h1 className="text-2xl font-bold">Something went wrong</h1>
-      <p className="mt-2 text-sm text-muted-foreground">{error.message}</p>
+      <p className="mt-2 text-sm text-muted-foreground">{error instanceof Error ? error.message : String(error)}</p>
     </div>
   ),
   component: PreviewQuiz,
