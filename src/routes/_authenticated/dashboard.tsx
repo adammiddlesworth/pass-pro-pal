@@ -12,7 +12,9 @@ import {
   Target,
   CalendarIcon,
   Clock,
+  Lock,
 } from "lucide-react";
+import { FINAL_UNLOCK_READINESS } from "@/lib/readiness";
 import { useAuth } from "@/hooks/use-auth";
 import { getActiveTrack } from "@/lib/track.functions";
 import {
@@ -268,17 +270,46 @@ function ReadinessHero({ category }: { category: string }) {
               </p>
 
               {data?.hasTimedFinal && !data?.passedTimedFinal && data?.timedFinalSlug && (
-                <div className="mt-3">
-                  <Link
-                    to="/exams/$slug/take"
-                    params={{ slug: data.timedFinalSlug }}
-                  >
-                    <Button size="sm" className="gap-1.5">
-                      <Target className="h-4 w-4" />
-                      Take the Timed Final Exam
-                    </Button>
-                  </Link>
-                </div>
+                score >= FINAL_UNLOCK_READINESS ? (
+                  <div className="mt-4 rounded-lg border border-emerald-500/40 bg-emerald-500/10 p-4">
+                    <div className="flex items-start gap-3">
+                      <Target className="mt-0.5 h-6 w-6 shrink-0 text-emerald-500" />
+                      <div>
+                        <p className="font-semibold text-foreground">You're ready for the Timed Final Exam</p>
+                        <p className="text-sm text-muted-foreground">Pass it to prove you're exam-ready.</p>
+                      </div>
+                    </div>
+                    <Link to="/exams/$slug/take" params={{ slug: data.timedFinalSlug }} className="mt-3 block">
+                      <Button className="w-full gap-1.5 bg-emerald-600 text-white hover:bg-emerald-600/90">
+                        Take the Timed Final Exam
+                        <ArrowRight className="h-4 w-4" />
+                      </Button>
+                    </Link>
+                  </div>
+                ) : (
+                  <div className="mt-4 rounded-lg border border-dashed border-border p-4">
+                    <div className="flex items-start gap-3">
+                      <Lock className="mt-0.5 h-5 w-5 shrink-0 text-muted-foreground" />
+                      <div>
+                        <p className="font-semibold text-foreground">Timed Final Exam</p>
+                        <p className="text-sm text-muted-foreground">
+                          unlocks at {FINAL_UNLOCK_READINESS}% readiness
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex items-center gap-3">
+                      <div className="h-2 flex-1 overflow-hidden rounded-full bg-muted">
+                        <div
+                          className={`h-full rounded-full ${meta.stroke.replace("stroke-", "bg-")}`}
+                          style={{ width: `${Math.min(100, (score / FINAL_UNLOCK_READINESS) * 100)}%` }}
+                        />
+                      </div>
+                      <span className="text-sm tabular-nums text-muted-foreground">
+                        {score} / {FINAL_UNLOCK_READINESS}
+                      </span>
+                    </div>
+                  </div>
+                )
               )}
               {data && !data.hasTimedFinal && (
                 <p className="mt-2 text-xs italic text-muted-foreground">
