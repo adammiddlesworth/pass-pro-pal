@@ -259,10 +259,16 @@ function ReadinessHero({ category }: { category: string }) {
               </div>
               {hasData && data && (
                 <div className="mt-2">
-                  <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${meta.pill}`}>
-                    <span className={`h-1.5 w-1.5 rounded-full bg-current`} />
-                    {data.status}
-                  </span>
+                  {(() => {
+                    const unlocked =
+                      data.hasTimedFinal && !data.passedTimedFinal && score >= FINAL_UNLOCK_READINESS;
+                    return (
+                      <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-sm font-semibold ${unlocked ? colorMeta("green").pill : meta.pill}`}>
+                        <span className={`h-1.5 w-1.5 rounded-full bg-current`} />
+                        {unlocked ? "Final unlocked" : data.status}
+                      </span>
+                    );
+                  })()}
                 </div>
               )}
               <p className="mt-3 text-sm leading-snug text-muted-foreground">
